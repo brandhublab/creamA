@@ -376,6 +376,72 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
 </style>
 </head>
 <body>
+<div id="pwd-gate" style="position:fixed;inset:0;background:#0A0A08;z-index:99999;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,sans-serif">
+  <div style="background:#111110;border:1px solid #2A2A28;border-radius:14px;padding:36px 42px;max-width:380px;width:90%;text-align:center">
+    <div style="font-size:36px;margin-bottom:12px">🔒</div>
+    <div style="font-size:15px;font-weight:500;color:#F0EDE8;margin-bottom:8px">보호된 페이지</div>
+    <div style="font-size:12px;color:#7A7870;margin-bottom:20px;line-height:1.6">접근 암호를 입력해주세요</div>
+    <input id="pwd-input" type="password" placeholder="암호" autofocus
+      style="width:100%;padding:11px 14px;border:1px solid #2A2A28;border-radius:8px;background:#1A1A18;color:#F0EDE8;font-size:14px;outline:none;text-align:center;letter-spacing:.2em;font-family:'DM Mono',monospace"
+      onkeydown="if(event.key===\'Enter\')checkPwd()">
+    <div id="pwd-err" style="color:#E05050;font-size:11px;margin-top:8px;min-height:14px"></div>
+    <label style="display:flex;align-items:center;justify-content:center;gap:7px;margin-top:12px;font-size:11px;color:#7A7870;cursor:pointer;user-select:none">
+      <input type="checkbox" id="pwd-remember" checked style="width:14px;height:14px;cursor:pointer;accent-color:#C8A45A">
+      <span>30일간 유지</span>
+    </label>
+    <button onclick="checkPwd()" style="width:100%;margin-top:14px;padding:11px;border:none;border-radius:8px;background:#C8A45A;color:#0A0A08;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit">접근</button>
+  </div>
+</div>
+<script>
+(function(){
+  var PWD='2029';
+  var KEY='_hub_pwd_auth';
+  var DAYS=30;
+  function getCookie(n){
+    var m=document.cookie.match(new RegExp('(^| )'+n+'=([^;]+)'));
+    return m?m[2]:null;
+  }
+  function setCookie(n,v,d){
+    var e=new Date();
+    e.setTime(e.getTime()+d*86400000);
+    document.cookie=n+'='+v+';expires='+e.toUTCString()+';path=/;SameSite=Strict';
+  }
+  try{
+    var stored=localStorage.getItem(KEY);
+    if(stored){
+      var d=JSON.parse(stored);
+      if(d.exp && d.exp>Date.now()){
+        document.getElementById('pwd-gate').style.display='none';
+        return;
+      }
+    }
+  }catch(e){}
+  if(getCookie(KEY)==='1'){
+    document.getElementById('pwd-gate').style.display='none';
+    return;
+  }
+  window.checkPwd=function(){
+    var v=document.getElementById('pwd-input').value;
+    var err=document.getElementById('pwd-err');
+    var remember=document.getElementById('pwd-remember').checked;
+    if(v===PWD){
+      if(remember){
+        try{
+          localStorage.setItem(KEY,JSON.stringify({exp:Date.now()+DAYS*86400000}));
+        }catch(e){}
+        setCookie(KEY,'1',DAYS);
+      }
+      document.getElementById('pwd-gate').style.display='none';
+      err.textContent='';
+    }else{
+      err.textContent='암호가 일치하지 않습니다';
+      document.getElementById('pwd-input').value='';
+      document.getElementById('pwd-input').focus();
+    }
+  };
+})();
+</script>
+
 
 <!-- NAV -->
 <div class="nav" id="main-nav">
@@ -1480,28 +1546,38 @@ let designRefs=[
  {id:'dsr5',name:'달바 패키지',url:'https://d-alba.com',note:'감성 K-뷰티 미니멀'},
  {id:'dsr6',name:'Dr.MELAXIN',url:'https://melaxin.com',note:'클리닉 화이트 더마'},
 ];
-let deadlineData={targetDate:'2026-06-19',items:[
- {id:'dl01',name:'출시 D-Day',days:0,deadline:'2026-06-19',startDate:'2026-06-19',team:'체이스',note:'올리브영·자사몰'},
- {id:'dl02',name:'올리브영 온라인 입고',days:7,deadline:'2026-06-12',startDate:'2026-06-05',team:'체이스',note:''},
- {id:'dl03',name:'광고 캠페인 세팅',days:5,deadline:'2026-06-08',startDate:'2026-06-03',team:'체이스',note:'Meta/Google'},
- {id:'dl04',name:'협찬 콘텐츠 업로드',days:7,deadline:'2026-06-05',startDate:'2026-05-29',team:'체이스',note:'피부과 유튜버'},
- {id:'dl05',name:'상세페이지 최종 업로드',days:5,deadline:'2026-05-30',startDate:'2026-05-25',team:'체이스',note:'임상 수치 반영'},
- {id:'dl06',name:'광고 소재 제작 완료',days:14,deadline:'2026-05-25',startDate:'2026-05-11',team:'체이스',note:'BnA 영상·이미지'},
- {id:'dl07',name:'인플루언서 섭외·계약',days:10,deadline:'2026-05-15',startDate:'2026-05-05',team:'체이스',note:''},
- {id:'dl08',name:'임상시험 결과 수령',days:3,deadline:'2026-05-10',startDate:'2026-05-07',team:'체이스',note:'색소침착+무자극'},
- {id:'dl09',name:'제품 풀필먼트 입고',days:7,deadline:'2026-05-01',startDate:'2026-04-24',team:'체이스',note:'3,000개'},
- {id:'dl10',name:'QC & 기능성화장품 심사',days:14,deadline:'2026-04-24',startDate:'2026-04-10',team:'체이스',note:'이중 미백'},
- {id:'dl11',name:'패키지 생산·포장 완료',days:21,deadline:'2026-04-10',startDate:'2026-03-20',team:'체이스',note:'100g 단지형'},
- {id:'dl12',name:'임상시험 시작',days:56,deadline:'2026-04-01',startDate:'2026-02-04',team:'체이스',note:'P&K·KTR'},
- {id:'dl13',name:'패키지 디자인 확정',days:14,deadline:'2026-03-15',startDate:'2026-03-01',team:'체이스',note:''},
- {id:'dl14',name:'최종 처방 샘플 확정',days:21,deadline:'2026-03-01',startDate:'2026-02-08',team:'체이스',note:''},
- {id:'dl15',name:'2차 샘플 수령·검토',days:14,deadline:'2026-02-08',startDate:'2026-01-25',team:'체이스',note:''},
- {id:'dl16',name:'1차 샘플 수령·피드백',days:7,deadline:'2026-01-25',startDate:'2026-01-18',team:'체이스',note:'이데베논 색상'},
- {id:'dl17',name:'ODM 제품개발의뢰서 제출',days:14,deadline:'2026-01-18',startDate:'2026-01-04',team:'체이스',note:'연꽃꽃수 확인'},
- {id:'dl18',name:'ODM 공장 선정·계약',days:14,deadline:'2026-01-04',startDate:'2025-12-21',team:'체이스',note:''},
- {id:'dl19',name:'임상기관 견적 확정',days:7,deadline:'2026-01-03',startDate:'2025-12-27',team:'체이스',note:''},
- {id:'dl20',name:'ODM 공장 견적 비교',days:14,deadline:'2025-12-27',startDate:'2025-12-13',team:'체이스',note:''}
-]},adPlans=[{id:'ap1',name:'기획안 1',videoUrl:'',appeal:'출산 후 기미 손실 회피',product:'신규진행 제품',script:'기미가 보이기 시작한다면, 이미 늦었다.\n출산 후 갑자기 생긴 기미, 레이저 대신 매일 이걸 바르세요.\n트라넥삼산 5% 임상 완료. 황칠 항산화 방어층으로 기미를 막습니다.',hook:'기미가 보이기 시작한다면, 이미 늦었다.',cta:'지금 바로 시작하세요',format:'영상 (15초)',status:'기획중'}],orgData={leader:{name:'대표 (Chase)',role:'CEO / 1인 대표',memo:'전략·광고·운영 총괄'},teams:[
+let deadlineData={
+ targetDate:'2026-06-19',
+ categories:{
+  prod:[
+   {id:'prod-order',name:'생산발주+입고',offsetDays:-50,durationDays:50,color:'#C0392B',fixed:true,note:'출시 50일 전 필수 완료',done:false},
+   {id:'prod-sample',name:'최종 처방 샘플 확정',offsetDays:-78,durationDays:28,color:'#8B4513',fixed:true,note:'생산발주 4주 전부터 4주간',done:false},
+   {id:'prod-vendor',name:'샘플링 전 업체 조사 및 선정',offsetDays:-81,durationDays:3,color:'#A0522D',fixed:true,note:'최종 처방 확정 3일 전',done:false},
+   {id:'prod-clin-quote',name:'임상시험 견적 확정',offsetDays:-28,durationDays:7,color:'#2E7D32',fixed:true,note:'D-day 4주 전, 1주간',done:false},
+   {id:'prod-clin-test',name:'임상시험 진행',offsetDays:-21,durationDays:21,color:'#1B5E20',fixed:true,note:'D-day 3주 전부터 3주간',done:false},
+   {id:'prod-package',name:'패키지 디자인 확정',offsetDays:-57,durationDays:7,color:'#6A1B9A',fixed:true,note:'생산발주 1주 전 완료',done:false}
+  ],
+  photo:[
+   {id:'photo-concept',name:'촬영 컨셉 기획',offsetDays:-21,durationDays:5,color:'#FF6F00',note:'자유 수정 가능',done:false},
+   {id:'photo-shoot',name:'제품 촬영 (스튜디오)',offsetDays:-14,durationDays:3,color:'#E65100',note:'자유 수정 가능',done:false},
+   {id:'photo-retouch',name:'사진 리터칭',offsetDays:-11,durationDays:5,color:'#FF8F00',note:'자유 수정 가능',done:false},
+   {id:'photo-detail',name:'상세페이지 디자인',offsetDays:-7,durationDays:7,color:'#FFA000',note:'자유 수정 가능',done:false}
+  ],
+  web:[
+   {id:'web-domain',name:'도메인 · 호스팅 세팅',offsetDays:-14,durationDays:2,color:'#1565C0',note:'출시 2주 전 시작',done:false},
+   {id:'web-theme',name:'쇼핑몰 테마 설치 · 디자인',offsetDays:-12,durationDays:4,color:'#0D47A1',note:'유동 수정',done:false},
+   {id:'web-pg',name:'PG · 간편결제 연결',offsetDays:-8,durationDays:3,color:'#1976D2',note:'유동 수정',done:false},
+   {id:'web-review',name:'알파리뷰 · 픽셀 설치',offsetDays:-5,durationDays:2,color:'#2196F3',note:'유동 수정',done:false},
+   {id:'web-test',name:'전체 테스트 · 오픈 준비',offsetDays:-3,durationDays:3,color:'#42A5F5',note:'유동 수정',done:false}
+  ],
+  ad:[
+   {id:'ad-plan',name:'광고 소재 기획',offsetDays:-28,durationDays:7,color:'#7B1FA2',note:'D-day 4주 전 시작',done:false},
+   {id:'ad-produce',name:'광고 소재 제작 (영상/이미지)',offsetDays:-21,durationDays:14,color:'#9C27B0',note:'유동 수정',done:false},
+   {id:'ad-run',name:'초도 광고 영상 5개 집행',offsetDays:-7,durationDays:14,color:'#AB47BC',note:'D-day 1주 전 ~ D+7일, 5개',done:false},
+   {id:'ad-review',name:'광고 성과 분석',offsetDays:7,durationDays:7,color:'#BA68C8',note:'D+7일까지',done:false}
+  ]
+ }
+},adPlans=[{id:'ap1',name:'기획안 1',videoUrl:'',appeal:'출산 후 기미 손실 회피',product:'신규진행 제품',script:'기미가 보이기 시작한다면, 이미 늦었다.\n출산 후 갑자기 생긴 기미, 레이저 대신 매일 이걸 바르세요.\n트라넥삼산 5% 임상 완료. 황칠 항산화 방어층으로 기미를 막습니다.',hook:'기미가 보이기 시작한다면, 이미 늦었다.',cta:'지금 바로 시작하세요',format:'영상 (15초)',status:'기획중'}],orgData={leader:{name:'대표 (Chase)',role:'CEO / 1인 대표',memo:'전략·광고·운영 총괄'},teams:[
  {id:'ot1',name:'제품팀',color:'#1A6B4A',members:[{name:'(담당자 미정)',role:'제품 기획·ODM 관리'}]},
  {id:'ot2',name:'광고/컨텐츠팀',color:'#2196F3',members:[{name:'(담당자 미정)',role:'Meta·Google 광고 집행'}]},
  {id:'ot3',name:'디자인팀',color:'#9C27B0',members:[{name:'(담당자 미정)',role:'패키지·상세페이지·SNS 디자인'}]},
@@ -1954,32 +2030,76 @@ function sv(label){
   },800);
  }
  try{
-  const snap={brands:allData,reviews:revData,idea:ideaData,mapPos,mapCustomItems,costs:costData,expenses:expenseData,adSpend:adSpendData,adSpendBudget,monthlyAds:monthlyAdsData,vendors:vendorData,mktPlan,progressData,analysis:analysisData,personas:personaData,devForms,wig:wigData,hubSettings,design:designData,designConcepts,detailPage:detailPageData,draftSections:(typeof draftSections!=="undefined"?draftSections:[]),moodData:moodData,persuasionData:persuasionData,uniquenessData:uniquenessData,mechanismData:mechanismData,clinicalItems:clinicalItems,clinicalInstitutions:clinicalInstitutions,benchmarks,detailStructure,detailRefs,designRefs,cogsData,roasData:roasData,prodExpenseData:prodExpenseData,prodExpData2:prodExpData2,adExpenseData:adExpenseData,revSummary:revSummaryData,deadlines:deadlineData,adPlans,org:orgData,saveHistory};
+  const _g=(v,d)=>(typeof v==='undefined'?d:v);
+  const snap={
+   brands:_g(typeof allData!=='undefined'?allData:null,[]),
+   reviews:_g(typeof revData!=='undefined'?revData:null,[]),
+   idea:_g(typeof ideaData!=='undefined'?ideaData:null,{}),
+   mapPos:_g(typeof mapPos!=='undefined'?mapPos:null,{}),
+   mapCustomItems:_g(typeof mapCustomItems!=='undefined'?mapCustomItems:null,[]),
+   costs:_g(typeof costData!=='undefined'?costData:null,[]),
+   expenses:_g(typeof expenseData!=='undefined'?expenseData:null,[]),
+   adSpend:_g(typeof adSpendData!=='undefined'?adSpendData:null,[]),
+   adSpendBudget:_g(typeof adSpendBudget!=='undefined'?adSpendBudget:null,0),
+   monthlyAds:_g(typeof monthlyAdsData!=='undefined'?monthlyAdsData:null,[]),
+   vendors:_g(typeof vendorData!=='undefined'?vendorData:null,[]),
+   mktPlan:_g(typeof mktPlan!=='undefined'?mktPlan:null,[]),
+   progressData:_g(typeof progressData!=='undefined'?progressData:null,{}),
+   analysis:_g(typeof analysisData!=='undefined'?analysisData:null,{}),
+   personas:_g(typeof personaData!=='undefined'?personaData:null,[]),
+   devForms:_g(typeof devForms!=='undefined'?devForms:null,[]),
+   wig:_g(typeof wigData!=='undefined'?wigData:null,{}),
+   hubSettings:_g(typeof hubSettings!=='undefined'?hubSettings:null,{}),
+   design:_g(typeof designData!=='undefined'?designData:null,{}),
+   designConcepts:_g(typeof designConcepts!=='undefined'?designConcepts:null,[]),
+   detailPage:_g(typeof detailPageData!=='undefined'?detailPageData:null,{}),
+   draftSections:_g(typeof draftSections!=='undefined'?draftSections:null,[]),
+   moodData:_g(typeof moodData!=='undefined'?moodData:null,{}),
+   persuasionData:_g(typeof persuasionData!=='undefined'?persuasionData:null,[]),
+   uniquenessData:_g(typeof uniquenessData!=='undefined'?uniquenessData:null,[]),
+   mechanismData:_g(typeof mechanismData!=='undefined'?mechanismData:null,{}),
+   clinicalItems:_g(typeof clinicalItems!=='undefined'?clinicalItems:null,[]),
+   clinicalInstitutions:_g(typeof clinicalInstitutions!=='undefined'?clinicalInstitutions:null,[]),
+   benchmarks:_g(typeof benchmarks!=='undefined'?benchmarks:null,[]),
+   detailStructure:_g(typeof detailStructure!=='undefined'?detailStructure:null,[]),
+   detailRefs:_g(typeof detailRefs!=='undefined'?detailRefs:null,[]),
+   designRefs:_g(typeof designRefs!=='undefined'?designRefs:null,[]),
+   cogsData:_g(typeof cogsData!=='undefined'?cogsData:null,[]),
+   roasData:_g(typeof roasData!=='undefined'?roasData:null,[]),
+   prodExpenseData:_g(typeof prodExpenseData!=='undefined'?prodExpenseData:null,[]),
+   prodExpData2:_g(typeof prodExpData2!=='undefined'?prodExpData2:null,[]),
+   adExpenseData:_g(typeof adExpenseData!=='undefined'?adExpenseData:null,[]),
+   revSummary:_g(typeof revSummaryData!=='undefined'?revSummaryData:null,{}),
+   deadlines:_g(typeof deadlineData!=='undefined'?deadlineData:null,{}),
+   adPlans:_g(typeof adPlans!=='undefined'?adPlans:null,[]),
+   org:_g(typeof orgData!=='undefined'?orgData:null,{}),
+   saveHistory:_g(typeof saveHistory!=='undefined'?saveHistory:null,[])
+  };
   const snapStr=JSON.stringify(snap);
   // Try to save; if quota exceeded, strip heavy arrays and retry
   try{localStorage.setItem(SK,snapStr);}
   catch(qe){
    if(qe.name==='QuotaExceededError'||qe.code===22){
     // Strip reviews and large persona journey data to fit
-    const snapLite={...snap,reviews:revData.slice(0,5),personas:personaData.map(p=>({...p,journey:undefined}))};
+    const snapLite={...snap,reviews:(typeof revData!=='undefined'?revData:[]).slice(0,5),personas:(typeof personaData!=='undefined'?personaData:[]).map(p=>({...p,journey:undefined}))};
     try{localStorage.setItem(SK,JSON.stringify(snapLite));}
     catch(qe2){
      // Last resort: only save critical data
-     const snapMin={brands:allData.slice(0,10),costs:costData,progressData,mktPlan,wig:wigData,hubSettings};
+     const snapMin={brands:(typeof allData!=='undefined'?allData:[]).slice(0,10),costs:(typeof costData!=='undefined'?costData:[]),progressData:(typeof progressData!=='undefined'?progressData:{}),mktPlan:(typeof mktPlan!=='undefined'?mktPlan:[]),wig:(typeof wigData!=='undefined'?wigData:{}),hubSettings:(typeof hubSettings!=='undefined'?hubSettings:{})};
      try{localStorage.setItem(SK,JSON.stringify(snapMin));}catch(qe3){}
     }
    } else { throw qe; }
   }
   // Also try window.storage if available (claude.ai)
-  if(typeof window!=='undefined'&&window.storage&&window.storage.set){try{window.storage.set(SK,snapStr)}catch(e){try{window.storage.set(SK,JSON.stringify({...snap,reviews:revData.slice(0,5)}))}catch(e2){}}}
+  if(typeof window!=='undefined'&&window.storage&&window.storage.set){try{window.storage.set(SK,snapStr)}catch(e){try{window.storage.set(SK,JSON.stringify({...snap,reviews:(typeof revData!=='undefined'?revData:[]).slice(0,5)}))}catch(e2){}}}
   const t=new Date();const ts=t.toLocaleString('ko-KR');
   const ind=document.getElementById('save-indicator');if(ind)ind.textContent='저장됨 '+ts;
   // Save history
-  if(!saveHistory)saveHistory=[];
+  if(typeof saveHistory==='undefined')saveHistory=[];else if(!saveHistory)saveHistory=[];
   // Store snapshot WITHOUT saveHistory to avoid circular growth
   // Keep save history small to avoid localStorage quota errors
   try{
-   const snapForHist={brands:allData.slice(0,20),mktPlan,progressData,wig:wigData};
+   const snapForHist={brands:(typeof allData!=='undefined'?allData:[]).slice(0,20),mktPlan:(typeof mktPlan!=='undefined'?mktPlan:[]),progressData:(typeof progressData!=='undefined'?progressData:{}),wig:(typeof wigData!=='undefined'?wigData:{})};
    const histStr=JSON.stringify(snapForHist);
    if(histStr.length<50000){  // Only save if under 50KB
     saveHistory.unshift({ts,snap:histStr});
@@ -2043,7 +2163,7 @@ function showTab(id,btn){
   t17b:()=>{buildMood();},
   t18:()=>{renderClinicalItems();renderClinicalInstitutions();},
   t19:()=>{renderPersuasion();},
-  t14:()=>{renderDeadlines();},
+  t14:()=>{const dt=document.getElementById('dl-target-date');if(dt)dt.value=deadlineData.targetDate||'';renderDeadlines();},
   t15:()=>{renderAdPlans();},
   t16:()=>{renderOrg();},
  };
@@ -2467,6 +2587,7 @@ function updateProdSummary(){
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 광고비 지출 (adExpenseData)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+var prodExpenseData=[];
 var adExpenseData=[];
 function renderAdExpRows(){
  const tbody=document.getElementById('adexp-rows');if(!tbody)return;
@@ -4984,126 +5105,84 @@ function setMonthlyItem(y,mi,ii,key,val){
 // DEADLINE CALCULATOR (t14)
 // ============================================================
 function renderDeadlines(){
- const tbody=document.getElementById('deadline-body');
- if(!tbody)return;
- const d=deadlineData||{items:[]};
- tbody.innerHTML=(d.items||[]).map((item,i)=>`<tr style="border-bottom:.5px solid var(--bd)">
-  <td style="padding:5px 8px">
-   <input value="${item.name||''}" onchange="deadlineData.items[${i}].name=this.value" style="width:100%;border:none;background:transparent;font-size:12px;color:var(--tx);outline:none;padding:2px 4px">
-  </td>
-  <td style="padding:5px 8px;width:70px">
-   <input type="number" value="${item.days||0}" onchange="deadlineData.items[${i}].days=parseInt(this.value)||0;calcAllDeadlines()" style="width:55px;border:1px solid var(--bd);border-radius:4px;padding:2px 5px;font-size:12px;font-family:var(--mn);background:var(--bg);color:var(--tx);outline:none">
-   <span style="font-size:10px;color:var(--mu)"> 일</span>
-  </td>
-  <td style="padding:5px 8px;width:80px">
-   <input value="${item.team||''}" onchange="deadlineData.items[${i}].team=this.value" style="width:70px;border:1px solid var(--bd);border-radius:4px;padding:2px 5px;font-size:11px;background:var(--bg);color:var(--tx);outline:none" placeholder="팀">
-  </td>
-  <td style="padding:5px 8px;width:130px">
-   <input type="date" value="${item.deadline||''}" onchange="deadlineData.items[${i}].deadline=this.value;calcStartDate(${i})" style="border:1px solid var(--bd);border-radius:4px;padding:2px 5px;font-size:11px;background:var(--bg);color:var(--tx);outline:none">
-  </td>
-  <td style="padding:5px 8px;width:130px;background:#F1F8E9">
-   <span id="dl-start-${item.id}" style="font-size:12px;font-weight:500;font-family:var(--mn);color:#2E7D32">${item.startDate||'—'}</span>
-  </td>
-  <td style="padding:5px 8px;font-size:10px;color:var(--mu);max-width:120px">
-   <input value="${item.note||''}" onchange="deadlineData.items[${i}].note=this.value" style="width:100%;border:none;background:transparent;font-size:10px;color:var(--mu);outline:none" placeholder="비고">
-  </td>
-  <td style="padding:5px 8px;text-align:center;width:36px">
-   <button class="ib dl" onclick="removeDeadlineItem(${i})">✕</button>
-  </td>
- </tr>`).join('') || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--hi)">항목을 추가하세요</td></tr>';
- renderDeadlineTimeline();
-}
-
-
-function calcStartDate(i){
- const item=deadlineData.items[i];
- if(!item.deadline||!item.days){item.startDate='';return;}
- const end=new Date(item.deadline);
- end.setDate(end.getDate()-item.days);
- item.startDate=end.toISOString().split('T')[0];
- const el=document.getElementById('dl-start-'+item.id);
- if(el)el.textContent=item.startDate;
- sv();
-}
-
-function calcAllDeadlines(){
- const targetEl=document.getElementById('dl-target-date');
- const target=targetEl?targetEl.value:'';
- if(target)deadlineData.targetDate=target;
- // Work backwards from target date
- if(!target){renderDeadlines();return;}
- let currentDate=new Date(target);
- const items=[...deadlineData.items].reverse();
- items.forEach((item,ri)=>{
-  const realIdx=deadlineData.items.length-1-ri;
-  deadlineData.items[realIdx].deadline=currentDate.toISOString().split('T')[0];
-  const start=new Date(currentDate);
-  start.setDate(start.getDate()-item.days);
-  deadlineData.items[realIdx].startDate=start.toISOString().split('T')[0];
-  currentDate=new Date(start);
-  currentDate.setDate(currentDate.getDate()-1);
+ const target=deadlineData.targetDate||'';
+ const catNames={prod:'🏭 생산',photo:'📸 촬영 & 상세페이지',web:'🛒 자사몰 세팅',ad:'📢 광고 소재 제작'};
+ const cats=deadlineData.categories||{};
+ Object.keys(catNames).forEach(catKey=>{
+  const el=document.getElementById('dl-cat-'+catKey);
+  if(!el)return;
+  const items=(cats[catKey]||[]);
+  if(!items.length){
+   el.innerHTML='<div style="padding:30px;text-align:center;color:var(--hi)">항목이 없습니다. 아래 버튼으로 추가하세요.</div>'
+    +'<div style="text-align:center"><button class="btn" onclick="addDLItem(\''+catKey+'\')">+ 항목 추가</button></div>';
+   return;
+  }
+  let html2='<div style="margin-bottom:8px;font-size:11px;color:var(--mu)">';
+  html2+=target?('런칭일 <strong>'+target+'</strong> 기준 자동 산출 · 수정 가능'):'⚠ 상단에서 런칭 목표일을 먼저 설정하세요';
+  html2+='</div>';
+  html2+='<table style="width:100%;border-collapse:collapse;font-size:12px">';
+  html2+='<thead><tr style="background:var(--bg);border-bottom:2px solid var(--bd)">';
+  html2+='<th style="padding:6px 8px;text-align:left;width:36px"></th>';
+  html2+='<th style="padding:6px 8px;text-align:left">항목</th>';
+  html2+='<th style="padding:6px 8px;text-align:center;width:110px">시작일</th>';
+  html2+='<th style="padding:6px 8px;text-align:center;width:110px">완료일</th>';
+  html2+='<th style="padding:6px 8px;text-align:center;width:65px">소요일</th>';
+  html2+='<th style="padding:6px 8px;text-align:left">메모</th>';
+  html2+='<th style="width:28px"></th>';
+  html2+='</tr></thead><tbody>';
+  items.forEach((item,i)=>{
+   let startDate='',endDate='';
+   if(target){
+    const endD=addDays(target,item.offsetDays+item.durationDays);
+    const startD=addDays(target,item.offsetDays);
+    startDate=item.customStart||fmtDate(startD);
+    endDate=item.customEnd||fmtDate(endD);
+   }else{
+    startDate=item.customStart||'';
+    endDate=item.customEnd||'';
+   }
+   const done=item.done?'✓':'';
+   html2+='<tr style="border-bottom:.5px solid var(--bd);background:'+(item.done?'rgba(76,175,80,.06)':'transparent')+'">';
+   html2+='<td style="padding:4px 8px;text-align:center"><input type="checkbox" '+(item.done?'checked':'')+' onchange="deadlineData.categories.'+catKey+'['+i+'].done=this.checked;renderDeadlines();sv()" style="width:16px;height:16px;cursor:pointer"></td>';
+   html2+='<td style="padding:5px 8px"><div style="display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:4px;height:18px;background:'+(item.color||'#888')+';border-radius:2px;flex-shrink:0"></span><input value="'+(item.name||'').replace(/"/g,'&quot;')+'" onchange="deadlineData.categories.'+catKey+'['+i+'].name=this.value;sv()" style="width:100%;border:none;background:transparent;font-size:12px;outline:none;'+(item.done?'text-decoration:line-through;color:var(--mu)':'')+'"></div></td>';
+   html2+='<td style="padding:5px 8px;text-align:center"><input type="date" value="'+startDate+'" onchange="deadlineData.categories.'+catKey+'['+i+'].customStart=this.value;sv()" style="border:none;background:transparent;font-family:var(--mn);font-size:11px;outline:none;text-align:center"></td>';
+   html2+='<td style="padding:5px 8px;text-align:center"><input type="date" value="'+endDate+'" onchange="deadlineData.categories.'+catKey+'['+i+'].customEnd=this.value;sv()" style="border:none;background:transparent;font-family:var(--mn);font-size:11px;outline:none;text-align:center"></td>';
+   html2+='<td style="padding:5px 8px;text-align:center;font-family:var(--mn);font-size:11px;color:var(--mu)">'+(item.durationDays||0)+'일</td>';
+   html2+='<td style="padding:5px 8px"><input value="'+(item.note||'').replace(/"/g,'&quot;')+'" onchange="deadlineData.categories.'+catKey+'['+i+'].note=this.value;sv()" style="width:100%;border:none;background:transparent;font-size:11px;color:var(--mu);outline:none"></td>';
+   html2+='<td style="padding:5px 4px"><button onclick="delDLItem(\''+catKey+'\','+i+')" style="background:none;border:none;color:var(--hi);cursor:pointer;font-size:11px">✕</button></td>';
+   html2+='</tr>';
+  });
+  html2+='</tbody></table>';
+  html2+='<div style="margin-top:10px;text-align:right"><button class="btn" onclick="addDLItem(\''+catKey+'\')">+ 항목 추가</button></div>';
+  el.innerHTML=html2;
  });
- sv();renderDeadlines();
 }
 
-function addDeadlineItem(){
- if(!deadlineData.items)deadlineData.items=[];
- deadlineData.items.push({id:'dl'+Date.now(),name:'새 항목',days:7,deadline:'',startDate:''});
+function addDLItem(cat){
+ const name=prompt('항목명:','새 항목');if(!name)return;
+ const offset=parseInt(prompt('런칭일 기준 시작 오프셋 (-N일 이전, 0=당일, +N일 이후):','-14'))||0;
+ const dur=parseInt(prompt('소요 일수:','7'))||1;
+ if(!deadlineData.categories[cat])deadlineData.categories[cat]=[];
+ deadlineData.categories[cat].push({
+  id:cat+'-new-'+Date.now(),name,offsetDays:offset,durationDays:dur,color:'#888',note:'',done:false
+ });
  renderDeadlines();sv();
 }
-
-function removeDeadlineItem(i){
- deadlineData.items.splice(i,1);renderDeadlines();sv();
+function delDLItem(cat,i){
+ if(!confirm('삭제?'))return;
+ deadlineData.categories[cat].splice(i,1);renderDeadlines();sv();
+}
+function renderDeadlineSummary(){
+ // 대시보드에서 호출 — 간단한 요약
+ const el=document.getElementById('deadline-summary');
+ if(!el)return;
+ const target=deadlineData.targetDate||'';
+ if(!target){el.innerHTML='<span style="color:var(--hi);font-size:11px">데드라인 탭에서 런칭일을 설정하세요</span>';return;}
+ el.innerHTML='<span style="font-size:11px;color:var(--mu)">런칭: </span><strong>'+target+'</strong>';
 }
 
-function applyDeadlinesToProgress(){
- // Apply startDate values to progressData for matching phase items
- deadlineData.items.forEach(item=>{
-  if(item.startDate){
-   // Try to match by name similarity with progress tasks
-   DEF_PROGRESS.forEach(phase=>phase.tasks.forEach(task=>{
-    if(task.text&&item.name&&task.text.includes(item.name.substring(0,5))){
-     progressData['prog_start_'+task.id]=item.startDate;
-     if(item.deadline)progressData['prog_end_'+task.id]=item.deadline;
-    }
-   }));
-  }
- });
- sv();showToast('전체진행현황에 날짜 적용 완료');
-}
 
-function renderDeadlineTimeline(){
- const el=document.getElementById('deadline-timeline');if(!el)return;
- const items=(deadlineData.items||[]).filter(it=>it.startDate&&it.deadline);
- if(!items.length){el.innerHTML='<div style="color:var(--hi);padding:10px;text-align:center">목표 완료일을 설정하면 타임라인이 표시됩니다</div>';return;}
- // Find date range
- const allDates=[...items.map(it=>it.startDate),...items.map(it=>it.deadline)].sort();
- const minDate=new Date(allDates[0]);const maxDate=new Date(allDates[allDates.length-1]);
- const totalDays=Math.max(1,(maxDate-minDate)/86400000);
- const colors=['#1A6B4A','#2196F3','#FF9800','#9C27B0','#F44336','#00BCD4','#8BC34A','#FF5722','#795548','#607D8B','#E91E63','#3F51B5'];
- el.innerHTML=`<div style="position:relative;padding:10px 0">
-  ${items.map((item,i)=>{
-   const left=Math.max(0,(new Date(item.startDate)-minDate)/86400000/totalDays*100);
-   const width=Math.max(2,(new Date(item.deadline)-new Date(item.startDate))/86400000/totalDays*100);
-   const color=colors[i%colors.length];
-   return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-    <div style="width:180px;font-size:11px;color:var(--tx);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.name}</div>
-    <div style="flex:1;position:relative;height:22px;background:var(--bg);border-radius:4px;border:1px solid var(--bd)">
-     <div style="position:absolute;left:${left}%;width:${width}%;height:100%;background:${color};border-radius:4px;display:flex;align-items:center;padding:0 6px;box-sizing:border-box;overflow:hidden">
-      <span style="font-size:10px;color:#FFF;white-space:nowrap;overflow:hidden">${item.days}일</span>
-     </div>
-    </div>
-    <div style="width:95px;font-size:10px;color:var(--mu);flex-shrink:0;font-family:var(--mn)">${item.startDate}</div>
-   </div>`;
-  }).join('')}
- </div>`;
-}
-
-function saveDeadlines(){sv();showToast('저장 완료');}
-
-// ============================================================
-// AD PLANNING (t15 메타 광고 기획)
-// ============================================================let currentAdPlan = 0;
+function saveDeadlines(){sv();showToast('스케줄 저장 완료','grn');}
 
 function renderAdPlans(){
  const tabsEl=document.getElementById('ad-plan-tabs');
@@ -5598,6 +5677,37 @@ load();
  }catch(e){}
 })();
 
+
+function calcAllDeadlines(){
+ const targetEl=document.getElementById('dl-target-date');
+ if(targetEl&&targetEl.value)deadlineData.targetDate=targetEl.value;
+ renderDeadlines();
+ sv();
+}
+
+function fmtDate(d){
+ if(!d)return '';
+ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');
+ return y+'-'+m+'-'+dd;
+}
+
+function addDays(dateStr,days){
+ if(!dateStr)return null;
+ const d=new Date(dateStr+'T00:00:00');
+ d.setDate(d.getDate()+days);
+ return d;
+}
+
+function showDLCat(cat,btn){
+ ['prod','photo','web','ad'].forEach(function(c){
+  var el=document.getElementById('dl-cat-'+c);
+  if(el)el.style.display=c===cat?'block':'none';
+ });
+ document.querySelectorAll('#t14 .stab').forEach(function(b){b.className='stab';});
+ if(btn)btn.className='stab act';
+ renderDeadlines();
+}
+
 </script>
 
 <!-- VENDOR MODAL -->
@@ -5759,45 +5869,28 @@ load();
 <!-- TAB t14: 목표/데드라인 산출기 -->
 <div id="t14" class="tab-pane">
   <div class="hbar">
-    <div style="font-size:12px;font-weight:500">⏱ 목표 완료일 → 시작일 자동 산출기</div>
-    <div style="display:flex;gap:6px">
-      <button class="btn" onclick="addDeadlineItem()">+ 항목 추가</button>
+    <div style="font-size:12px;font-weight:500">⏱ 런칭 D-day 기반 스케줄 관리</div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <label style="font-size:11px;color:var(--mu)">런칭 목표일:</label>
+      <input type="date" id="dl-target-date" onchange="calcAllDeadlines()" style="padding:4px 8px;border:1px solid var(--bd);border-radius:5px;font-size:12px;background:var(--bg);color:var(--tx);outline:none">
       <button class="btn pri" onclick="saveDeadlines()">저장</button>
     </div>
   </div>
-  <div style="padding:12px 18px">
-    <div class="section">
-      <div class="sec-head">
-        <h3>🎯 목표 완료일 설정</h3>
-        <div style="display:flex;align-items:center;gap:10px">
-          <label style="font-size:11px;color:var(--mu)">전체 목표 완료일:</label>
-          <input type="date" id="dl-target-date" onchange="calcAllDeadlines()" style="padding:4px 8px;border:1px solid var(--bd);border-radius:5px;font-size:12px;background:var(--bg);color:var(--tx);outline:none">
-          <button class="btn" onclick="applyDeadlinesToProgress()" style="font-size:11px">전체진행에 적용</button>
-        </div>
-      </div>
-      <div style="padding:10px 14px;overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;min-width:700px">
-          <thead><tr style="background:var(--bg)">
-            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:500;color:var(--mu);border-bottom:1px solid var(--bd)">단계/항목</th>
-            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:500;color:var(--mu);border-bottom:1px solid var(--bd);width:70px">소요(일)</th>
-            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:500;color:var(--mu);border-bottom:1px solid var(--bd);width:80px">담당팀</th>
-            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:500;color:var(--mu);border-bottom:1px solid var(--bd);width:130px">완료 목표일</th>
-            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:500;color:var(--mu);border-bottom:1px solid var(--bd);width:130px;background:#E8F5E9">▶ 시작해야 할 날짜</th>
-            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:500;color:var(--mu);border-bottom:1px solid var(--bd)">비고</th>
-            <th style="padding:7px 10px;font-size:10px;width:36px;border-bottom:1px solid var(--bd)"></th>
-          </tr></thead>
-          <tbody id="deadline-body"></tbody>
-        </table>
-      </div>
-    </div>
-    <div class="section" style="margin-top:0">
-      <div class="sec-head"><h3>📋 전체 일정 타임라인</h3></div>
-      <div id="deadline-timeline" style="padding:10px 14px"></div>
+  <div style="padding:10px 18px 0">
+    <div style="display:flex;gap:4px;border-bottom:1px solid var(--bd);margin-bottom:12px;flex-wrap:wrap">
+      <button class="stab act" onclick="showDLCat('prod',this)">🏭 생산</button>
+      <button class="stab" onclick="showDLCat('photo',this)">📸 촬영 & 상세페이지</button>
+      <button class="stab" onclick="showDLCat('web',this)">🛒 자사몰 세팅</button>
+      <button class="stab" onclick="showDLCat('ad',this)">📢 광고 소재 제작</button>
     </div>
   </div>
+  <div style="padding:0 18px 18px">
+    <div id="dl-cat-prod" class="dl-cat"></div>
+    <div id="dl-cat-photo" class="dl-cat" style="display:none"></div>
+    <div id="dl-cat-web" class="dl-cat" style="display:none"></div>
+    <div id="dl-cat-ad" class="dl-cat" style="display:none"></div>
+  </div>
 </div>
-
-<!-- TAB t15: 메타 광고 기획 -->
 <div id="t15" class="tab-pane">
   <div class="hbar">
     <div style="font-size:12px;font-weight:500">📹 Meta 광고 기획</div>
