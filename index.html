@@ -2565,24 +2565,53 @@ var roasData=[
 function renderRoasRows(){
  const tbody=document.getElementById('roas-rows');if(!tbody)return;
  const price=parseFloat(document.getElementById('roas-price2')?.value)||0;
- const N=n=>n.toLocaleString('ko-KR');
  tbody.innerHTML=roasData.map((r,i)=>{
-  const amt=r.type==='pct'?(price*r.pct/100):r.amount;
-  return`<tr style="border-bottom:.5px solid var(--bd)">
-   <td style="padding:5px 8px"><input value="${r.name}" onchange="roasData[${i}].name=this.value;sv()" style="border:none;background:transparent;font-size:12px;outline:none;width:100%"></td>
+  // 초기 값 산출: 한쪽이 비어있으면 반대쪽에서 자동 계산
+  let amt=r.amount||0, pct=r.pct||0;
+  if(!amt && pct && price) amt=Math.round(price*pct/100);
+  else if(!pct && amt && price) pct=Math.round((amt/price)*1000)/10;
+  return`<tr style="border-bottom:.5px solid var(--bd)" data-roas-row="${i}">
+   <td style="padding:5px 8px"><input value="${(r.name||'').replace(/"/g,'&quot;')}" onchange="roasData[${i}].name=this.value;sv()" style="border:none;background:transparent;font-size:12px;outline:none;width:100%"></td>
    <td style="padding:5px 8px;text-align:right">
-    <input type="number" value="${r.type==='fixed'?r.amount:Math.round(amt)}" oninput="roasData[${i}].amount=parseFloat(this.value)||0;roasData[${i}].type='fixed';renderRoasRows();calcROAS2();sv()"
-     style="width:85px;border:none;border-bottom:1px dashed var(--bd);background:transparent;font-family:var(--mn);font-size:12px;text-align:right;outline:none"
-     ${r.type==='pct'?'placeholder="자동계산"':''}>
+    <input type="number" id="roas-amt-${i}" value="${amt||''}" onchange="setRoasAmount(${i},this.value)"
+     style="width:85px;border:none;border-bottom:1px dashed var(--bd);background:transparent;font-family:var(--mn);font-size:12px;text-align:right;outline:none" placeholder="0">
    </td>
    <td style="padding:5px 8px;text-align:right">
-    <input type="number" step="0.1" value="${r.pct||''}" placeholder="%" oninput="roasData[${i}].pct=parseFloat(this.value)||0;roasData[${i}].type='pct';renderRoasRows();calcROAS2();sv()"
+    <input type="number" step="0.1" id="roas-pct-${i}" value="${pct||''}" onchange="setRoasPct(${i},this.value)" placeholder="0"
      style="width:50px;border:none;border-bottom:1px dashed var(--bd);background:transparent;font-family:var(--mn);font-size:12px;text-align:right;outline:none">%
    </td>
    <td style="padding:5px 4px"><button onclick="removeRoasRow(${i})" style="background:none;border:none;color:var(--hi);cursor:pointer;font-size:11px">✕</button></td>
   </tr>`;
  }).join('');
  calcROAS2();
+}
+
+// 금액 입력 시 → 비율 자동 계산 (DOM 직접 업데이트, 재렌더 없음)
+function setRoasAmount(i,val){
+ const amt=parseFloat(val)||0;
+ const price=parseFloat(document.getElementById('roas-price2')?.value)||0;
+ roasData[i].amount=amt;
+ if(price){
+  const pct=Math.round((amt/price)*1000)/10;
+  roasData[i].pct=pct;
+  const pctEl=document.getElementById('roas-pct-'+i);
+  if(pctEl) pctEl.value=pct||'';
+ }
+ calcROAS2();sv();
+}
+
+// 비율 입력 시 → 금액 자동 계산 (DOM 직접 업데이트, 재렌더 없음)
+function setRoasPct(i,val){
+ const pct=parseFloat(val)||0;
+ const price=parseFloat(document.getElementById('roas-price2')?.value)||0;
+ roasData[i].pct=pct;
+ if(price){
+  const amt=Math.round(price*pct/100);
+  roasData[i].amount=amt;
+  const amtEl=document.getElementById('roas-amt-'+i);
+  if(amtEl) amtEl.value=amt||'';
+ }
+ calcROAS2();sv();
 }
 var prodExpData2=[];
 function renderProdExpRows2(){
@@ -2618,7 +2647,7 @@ function addRoasRow(){
  roasData.push({id:'r'+Date.now(),name:'새 항목',amount:0,pct:0,type:'fixed'});
  renderRoasRows();sv();
 }
-function removeRoasRow(i){roasData.splice(i,1);sv();}
+function removeRoasRow(i){roasData.splice(i,1);renderRoasRows();sv();}
 function calcROAS2(){
  var price=parseFloat(document.getElementById('roas-price2')?.value)||0;
  var N=function(n){return n.toLocaleString('ko-KR');};
