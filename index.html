@@ -1043,22 +1043,15 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
           </tr></thead>
           <tbody id="cogs-body"></tbody>
           <tfoot>
-            <!-- 합계 행: 생산수량/초도투자금/잔여잔고 합산 -->
+            <!-- 합계 행: 단가(주황) / 생산수량 / 초도투자금(VAT포함) / 잔여잔고 -->
             <tr style="border-top:2px solid var(--bd);background:#E3F2FD;font-weight:600">
-              <td style="padding:6px 8px;color:#1565C0" colspan="3">합계</td>
+              <td style="padding:6px 8px;color:#1565C0">합계</td>
+              <td style="padding:6px 8px;text-align:right;font-family:var(--mn);color:var(--amber)" id="cogs-total">0원</td>
+              <td></td>
               <td style="padding:6px 8px;text-align:right;font-family:var(--mn);color:#1565C0" id="cogs-sum-prodqty">0</td>
               <td></td>
-              <td style="padding:6px 8px;text-align:right;font-family:var(--mn);color:#1565C0" id="cogs-sum-invest">0원</td>
+              <td style="padding:6px 8px;text-align:right;font-family:var(--mn);color:#1565C0;font-size:11px" id="cogs-sum-invest">0원<span style="display:block;font-size:9px;color:#42A5F5;font-weight:400">VAT포함</span></td>
               <td style="padding:6px 8px;text-align:right;font-family:var(--mn);color:#1565C0" id="cogs-sum-residual">0원</td>
-              <td></td>
-            </tr>
-            <!-- 단가 합계: 단가만 -->
-            <tr style="background:#FFFDE7;font-weight:600">
-              <td style="padding:5px 8px">단가 합계 (총원가)</td>
-              <td style="padding:5px 8px;text-align:right;font-family:var(--mn);color:var(--red)" id="cogs-total">0원</td>
-              <td colspan="2"></td>
-              <td style="padding:5px 8px;text-align:right" id="cogs-pct-total">—</td>
-              <td colspan="2"></td>
               <td></td>
             </tr>
             <!-- 부가세 10% -->
@@ -1067,7 +1060,7 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
               <td style="padding:5px 8px;text-align:right;font-family:var(--mn);color:var(--amber)" id="cogs-vat2">0원</td>
               <td colspan="6"></td>
             </tr>
-            <!-- 합계 (총원가+부가세) -->
+            <!-- 합계 (총원가 + 부가세) -->
             <tr style="background:#E8F5E9;font-weight:600">
               <td style="padding:6px 8px;color:#1A6B4A">합계 (총원가 + 부가세)</td>
               <td style="padding:6px 8px;text-align:right;font-family:var(--mn);color:#1A6B4A;font-size:13px" id="cogs-grand-total">0원</td>
@@ -1076,10 +1069,13 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
           </tfoot>
         </table>
         <div style="margin-top:8px;padding:10px 12px;background:var(--bg);border-radius:6px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">
             <span style="font-size:11px;font-weight:600">목표 판매가</span>
-            <input type="number" id="cogs-target-price" placeholder="40000" onchange="updateCogsTotal()"
-              style="width:110px;padding:4px 8px;border:1px solid var(--bd);border-radius:4px;font-family:var(--mn);font-size:13px;text-align:right;outline:none;font-weight:600">
+            <div style="display:flex;gap:6px;align-items:center">
+              <button class="btn" onclick="loadTotalToTargetPrice()" style="font-size:10px;padding:2px 8px" title="단가 합계를 목표 판매가로 불러오기">↩ 단가합계</button>
+              <input type="number" id="cogs-target-price" placeholder="40000" onchange="updateCogsTotal()"
+                style="width:110px;padding:4px 8px;border:1px solid var(--bd);border-radius:4px;font-family:var(--mn);font-size:13px;text-align:right;outline:none;font-weight:600">
+            </div>
           </div>
           <div style="border-top:0.5px solid var(--bd);padding-top:8px">
             <div style="display:flex;justify-content:space-between;margin-bottom:4px">
@@ -2733,9 +2729,11 @@ function updateCogsTotal(){
 
  // ━━━ 합계 행: 생산수량/초도투자금/잔여잔고 합산 ━━━
  const sumProdQty=cogsData.reduce((s,r)=>s+(r.prodQty||0),0);
- const sumInvest=cogsData.reduce((s,r)=>{
+ // 초도투자금 = (단가 × MOQ) × 1.1 (VAT 포함)
+ const sumInvestBase=cogsData.reduce((s,r)=>{
   const u=r.unitPrice||r.amount||0;const m=r.moq||0;return s+u*m;
  },0);
+ const sumInvest=Math.round(sumInvestBase*1.1);
  const sumResidual=cogsData.reduce((s,r)=>{
   const u=r.unitPrice||r.amount||0;
   const m=r.moq||0;const p=r.prodQty||0;
@@ -5280,6 +5278,17 @@ function renderCogsTable(){
 }
 
 // [REMOVED: legacy updateCogsTotal duplicate - see canonical version earlier]
+
+
+function loadTotalToTargetPrice(){
+ const total=cogsData.reduce((s,r)=>s+((r.unitPrice||r.amount)||0),0);
+ const el=document.getElementById('cogs-target-price');
+ if(el){
+  el.value=total;
+  updateCogsTotal();
+  showToast('✅ 단가 합계 '+total.toLocaleString('ko-KR')+'원을 목표 판매가로 불러옴','grn');
+ }
+}
 
 function addCogsRow(){cogsData.push({name:'새 항목',unitPrice:0,amount:0,moq:0,prodQty:0});renderCogsTable();updateCogsTotal();sv();}
 
