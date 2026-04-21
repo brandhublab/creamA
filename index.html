@@ -5189,20 +5189,8 @@ function renderCogsTable(){
  updateCogsTotal();
 }
 
-function updateCogsTotal(){
- const total=cogsData.reduce((s,r)=>s+(r.amount||0),0);
- const vat=Math.round(total*0.1);
- const totalVat=total+vat;
- cogsData.forEach((r,i)=>{
-  const el=document.getElementById('cogs-pct-'+i);
-  if(el)el.textContent=total?Math.round((r.amount||0)/total*100)+'%':'0%';
- });
- const ct=document.getElementById('cogs-total');if(ct)ct.textContent=N(total)+'원';
- const ctv=document.getElementById('cogs-vat');if(ctv)ctv.textContent=N(vat)+'원';
- const cti=document.getElementById('cogs-inc');if(cti)cti.textContent=N(totalVat)+'원';
- // Auto-update r-cogs with VAT-inclusive unit cost
- const rcogs=document.getElementById('r-cogs');if(rcogs){rcogs.value=totalVat;calcROAS();}
-}
+// [REMOVED: legacy updateCogsTotal duplicate - see canonical version earlier]
+
 function addCogsRow(){cogsData.push({name:'새 항목',unitPrice:0,amount:0,moq:0,prodQty:0});renderCogsTable();updateCogsTotal();sv();}
 
 function removeCogsRow(i){cogsData.splice(i,1);renderCogsTable();}
@@ -6369,7 +6357,7 @@ function showDLCat(cat,btn){
         "기미 예방 크림 브랜드 아이디어를 포지셔닝, 슬로건, 타겟, 핵심성분, 광고각도, 가격대, 차별점 포함하여 아래 JSON 형식으로 만들어줘.<br>
         {"name":"브랜드명","slogan":"슬로건","tagline":"태그라인","positioning":"포지셔닝 전략","target":"타겟 고객","ingr_concept":"성분 컨셉","ad_angle":"광고 각도","price_range":"가격대","diff":"차별점","score":85}"
       </p>
-      <button class="ai-copy-btn" onclick="copyPromptToClipboard('idea')"name":"","slogan":"","tagline":"","positioning":"","target":"","ingr_concept":"","ad_angle":"","price_range":"","diff":"","score":0}');showToast('프롬프트 복사됨')">📋 프롬프트 복사</button>
+      <button class="ai-copy-btn" onclick="copyPromptToClipboard('idea')">📋 프롬프트 복사</button>
     </div>
     <div class="fi full" style="margin-bottom:12px">
       <label>Claude 응답 JSON 붙여넣기</label>
