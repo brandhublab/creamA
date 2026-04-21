@@ -1102,7 +1102,10 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
     <div class="section" style="margin:0">
       <div class="sec-head">
         <h3>📊 ROAS 시뮬레이션</h3>
-        <button class="btn" onclick="addRoasRow()">+ 항목 추가</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn" onclick="loadCogsToRoas()" title="생산탭 → 합계(총원가+부가세) 불러오기">💰 생산원가 불러오기</button>
+          <button class="btn" onclick="addRoasRow()">+ 항목 추가</button>
+        </div>
       </div>
       <div class="sec-body">
         <table style="width:100%;border-collapse:collapse;font-size:12px" id="roas-input-table">
@@ -1115,7 +1118,7 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
           <tbody id="roas-rows"></tbody>
         </table>
         <div style="margin-top:8px;padding:8px 10px;background:var(--bg);border-radius:6px;font-size:11px;color:var(--mu)">
-          ※ 비율 입력 시 판매가 기준 원 자동 계산, 원 입력 시 비율 자동 계산
+          ※ 원가는 생산탭에서 VAT포함 자동 반영 · 비율↔금액 양방향 자동 계산
         </div>
       </div>
     </div>
@@ -2565,7 +2568,19 @@ var roasData=[
 function renderRoasRows(){
  const tbody=document.getElementById('roas-rows');if(!tbody)return;
  const price=parseFloat(document.getElementById('roas-price2')?.value)||0;
- tbody.innerHTML=roasData.map((r,i)=>{
+ // 생산탭의 VAT 포함 원가 자동 산출
+ const cogsTotal=(typeof cogsData!=='undefined'&&Array.isArray(cogsData))?
+  cogsData.reduce((s,r)=>s+((r.unitPrice||r.amount)||0),0):0;
+ const cogsWithVAT=Math.round(cogsTotal*1.1);
+ const cogsPct=price?Math.round((cogsWithVAT/price)*1000)/10:0;
+ // 고정 원가 행 (편집 불가, 생산탭에서 자동 산출)
+ let fixedRow='<tr style="border-bottom:.5px solid var(--bd);background:#FFFDE7">';
+ fixedRow+='<td style="padding:5px 8px;font-weight:600;color:#8B5E00">🏭 원가 <span style="font-size:9px;color:var(--mu);font-weight:400">(생산탭 VAT포함 자동)</span></td>';
+ fixedRow+='<td style="padding:5px 8px;text-align:right;font-family:var(--mn);font-size:12px;font-weight:600;color:#8B5E00">'+cogsWithVAT.toLocaleString('ko-KR')+'원</td>';
+ fixedRow+='<td style="padding:5px 8px;text-align:right;font-family:var(--mn);font-size:12px;color:#8B5E00">'+(price?cogsPct+'%':'—')+'</td>';
+ fixedRow+='<td style="padding:5px 4px;text-align:center"><button onclick="refreshCogsInRoas()" title="생산탭에서 다시 불러오기" style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:13px">↻</button></td>';
+ fixedRow+='</tr>';
+ tbody.innerHTML=fixedRow+roasData.map((r,i)=>{
   // 초기 값 산출: 한쪽이 비어있으면 반대쪽에서 자동 계산
   let amt=r.amount||0, pct=r.pct||0;
   if(!amt && pct && price) amt=Math.round(price*pct/100);
@@ -2613,6 +2628,16 @@ function setRoasPct(i,val){
  }
  calcROAS2();sv();
 }
+
+function refreshCogsInRoas(){
+ renderRoasRows();
+ calcROAS2();
+ if(typeof showToast==='function'){
+  const cogsTotal=(cogsData||[]).reduce((s,r)=>s+((r.unitPrice||r.amount)||0),0);
+  const cogsWithVAT=Math.round(cogsTotal*1.1);
+  showToast('✅ 생산탭 원가 '+cogsWithVAT.toLocaleString('ko-KR')+'원(VAT포함) 재반영','grn');
+ }
+}
 var prodExpData2=[];
 function renderProdExpRows2(){
  var tbody=document.getElementById('prodexp-rows2');if(!tbody)return;
@@ -2643,6 +2668,29 @@ function updateProdExpSummary(){
  var pe=document.getElementById('prodexp-pct');if(pe){pe.textContent=pct+'%';pe.style.color=pct>100?'var(--red)':'#6A1B9A';}
 }
 
+
+function loadCogsToRoas(){
+ if(!cogsData||!cogsData.length){showToast('생산 탭에 단가 데이터가 없습니다','red');return;}
+ const total=cogsData.reduce((s,r)=>s+((r.unitPrice||r.amount)||0),0);
+ const vat=Math.round(total*0.1);
+ const grandTotal=total+vat;
+ if(!total){showToast('단가 합계가 0원입니다','red');return;}
+ // 기존 "원가" 행 찾기 (이름에 "원가" 포함하는 가장 첫 항목)
+ if(!roasData)roasData=[];
+ let idx=roasData.findIndex(r=>(r.name||'').indexOf('원가')>=0);
+ if(idx<0){
+  // 새로 추가 (맨 앞)
+  roasData.unshift({id:'cogs-auto',name:'원가 (VAT포함)',amount:grandTotal,pct:0,type:'fixed'});
+ } else {
+  roasData[idx].name='원가 (VAT포함)';
+  roasData[idx].amount=grandTotal;
+  roasData[idx].pct=0;
+  roasData[idx].type='fixed';
+ }
+ renderRoasRows();sv();
+ showToast('✅ 생산원가 '+grandTotal.toLocaleString('ko-KR')+'원 (단가 '+total.toLocaleString('ko-KR')+'원 + VAT '+vat.toLocaleString('ko-KR')+'원) 불러옴','grn');
+}
+
 function addRoasRow(){
  roasData.push({id:'r'+Date.now(),name:'새 항목',amount:0,pct:0,type:'fixed'});
  renderRoasRows();sv();
@@ -2651,9 +2699,15 @@ function removeRoasRow(i){roasData.splice(i,1);renderRoasRows();sv();}
 function calcROAS2(){
  var price=parseFloat(document.getElementById('roas-price2')?.value)||0;
  var N=function(n){return n.toLocaleString('ko-KR');};
- var totalCost=0;
+ // 생산탭의 VAT 포함 원가 자동 합산
+ var cogsTotal=(typeof cogsData!=='undefined'&&Array.isArray(cogsData))?
+  cogsData.reduce(function(s,r){return s+((r.unitPrice||r.amount)||0);},0):0;
+ var cogsWithVAT=Math.round(cogsTotal*1.1);
+ var totalCost=cogsWithVAT; // 원가부터 시작
  (roasData||[]).forEach(function(r){
-  totalCost+=r.type==='pct'?(price*(r.pct||0)/100):(r.amount||0);
+  // 고정/비율 방식 구분 (신 로직): amount 또는 pct 둘 중 하나만 사용
+  if(r.amount) totalCost+=r.amount;
+  else if(r.pct&&price) totalCost+=(price*r.pct/100);
  });
  var margin=price-totalCost;
  var marginRate=price?Math.round(margin/price*100):0;
@@ -3172,7 +3226,13 @@ function showCostTab(tab, btn){
  if(tab==='adspend'){renderAdSpend();updateAdSpendTotals();}
  if(tab==='monthly')renderMonthlyAds();
  if(tab==='prod'){renderProdRows();renderCogsTable();}
- if(tab==='roas'){renderRoasRows();}
+ if(tab==='roas'){
+  // 생산탭의 목표 판매가를 ROAS 판매가로 자동 동기화
+  const cogsPrice=document.getElementById('cogs-target-price')?.value;
+  const roasPrice=document.getElementById('roas-price2');
+  if(cogsPrice&&roasPrice&&!roasPrice.value)roasPrice.value=cogsPrice;
+  renderRoasRows();
+ }
  if(tab==='allexp'){renderAllExpenses();}
  if(tab==='adexp'){renderAdExpRows();}
  if(tab==='prodexp'){renderProdExpRows2();}
