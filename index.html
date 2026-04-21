@@ -462,7 +462,7 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
       <button class="tab-btn act" onclick="showTab('t1',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">① 경쟁사DB</span></button>
       <button class="tab-btn" onclick="showTab('t2',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">② 전략·분석</span><button class="tab-del" onclick="deleteTabByBtn(this,'t2',event)">✕</button></button>
       <button class="tab-btn" onclick="showTab('t3',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">③ 리뷰분석</span><button class="tab-del" onclick="deleteTabByBtn(this,'t3',event)">✕</button></button>
-      <button class="tab-btn" onclick="showTab('t4',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">④ 제품아이디어</span><button class="tab-del" onclick="deleteTabByBtn(this,'t4',event)">✕</button></button>
+      <button class="tab-btn" onclick="showTab('t4',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">④ 제품/브랜드 도출</span><button class="tab-del" onclick="deleteTabByBtn(this,'t4',event)">✕</button></button>
       <button class="tab-btn" onclick="showTab('t5',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">⑤ 준비비용</span></button>
       <button class="tab-btn" onclick="showTab('t8',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">⑧ 마케팅플랜</span><button class="tab-del" onclick="deleteTabByBtn(this,'t8',event)">✕</button></button>
       <button class="tab-btn" onclick="showTab('t14',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">⑨ 데드라인</span><button class="tab-del" onclick="deleteTabByBtn(this,'t14',event)">✕</button></button><button class="tab-btn" onclick="showTab('t9',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">⑩ 진행현황</span></button>
@@ -806,13 +806,20 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
   <div class="hbar">
     <div style="font-size:12px;font-weight:500" id="idea-tab-title">
       <input id="idea-name-input" value="신규진행 제품" style="border:none;background:transparent;font-family:var(--sa);font-size:12px;font-weight:500;color:var(--tx);outline:none;min-width:120px" onchange="ideaData.name=this.value">
-      — 제품 아이디어 & 전략
+      — 제품/브랜드 도출
     </div>
     <button class="btn" onclick="openIdeaAI()">🤖 AI 자동채우기</button>
     <button class="btn pri" onclick="saveIdea()">저장</button>
   </div>
-  <div style="padding:12px 18px;max-width:880px" id="idea-wrap"></div>
-  <div id="idea-ingr-wrap" style="padding:0 18px 20px"></div>
+  <div class="subtab-nav">
+    <button class="stab act" id="idea4a-tab-btn" onclick="showIdeaSubTab('4a',this)">💡 제품 아이디어</button>
+    <button class="stab" id="idea4b-tab-btn" onclick="showIdeaSubTab('4b',this)">🏛 브랜드 아이디어</button>
+  </div>
+  <div id="idea4a-panel">
+    <div style="padding:12px 18px;max-width:880px" id="idea-wrap"></div>
+    <div id="idea-ingr-wrap" style="padding:0 18px 20px"></div>
+  </div>
+  <div id="idea4b-panel" style="display:none;padding:12px 18px"></div>
 </div>
 
 <!-- TAB 5: 준비비용 -->
@@ -1116,6 +1123,7 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
             <th style="width:28px"></th>
           </tr></thead>
           <tbody id="roas-rows"></tbody>
+            <tfoot></tfoot>
         </table>
         <div style="margin-top:8px;padding:8px 10px;background:var(--bg);border-radius:6px;font-size:11px;color:var(--mu)">
           ※ 원가는 생산탭에서 VAT포함 자동 반영 · 비율↔금액 양방향 자동 계산
@@ -2173,7 +2181,9 @@ function sv(label){
    org:_g(typeof orgData!=='undefined'?orgData:null,{}),
    saveHistory:_g(typeof saveHistory!=='undefined'?saveHistory:null,[]),
    ingrData:_g(typeof ingrData!=='undefined'?ingrData:null,null),
-   mechanismTitle:_g(typeof mechanismTitle!=='undefined'?mechanismTitle:null,'')
+   mechanismTitle:_g(typeof mechanismTitle!=='undefined'?mechanismTitle:null,''),
+   brandIdeaData:_g(typeof brandIdeaData!=='undefined'?brandIdeaData:null,null),
+   brandChecksData:_g(typeof brandChecksData!=='undefined'?brandChecksData:null,null)
   };
   const snapStr=JSON.stringify(snap);
   // Try to save; if quota exceeded, strip heavy arrays and retry
@@ -2568,36 +2578,42 @@ var roasData=[
 function renderRoasRows(){
  const tbody=document.getElementById('roas-rows');if(!tbody)return;
  const price=parseFloat(document.getElementById('roas-price2')?.value)||0;
- // 생산탭의 VAT 포함 원가 자동 산출
- const cogsTotal=(typeof cogsData!=='undefined'&&Array.isArray(cogsData))?
-  cogsData.reduce((s,r)=>s+((r.unitPrice||r.amount)||0),0):0;
- const cogsWithVAT=Math.round(cogsTotal*1.1);
- const cogsPct=price?Math.round((cogsWithVAT/price)*1000)/10:0;
- // 고정 원가 행 (편집 불가, 생산탭에서 자동 산출)
- let fixedRow='<tr style="border-bottom:.5px solid var(--bd);background:#FFFDE7">';
- fixedRow+='<td style="padding:5px 8px;font-weight:600;color:#8B5E00">🏭 원가 <span style="font-size:9px;color:var(--mu);font-weight:400">(생산탭 VAT포함 자동)</span></td>';
- fixedRow+='<td style="padding:5px 8px;text-align:right;font-family:var(--mn);font-size:12px;font-weight:600;color:#8B5E00">'+cogsWithVAT.toLocaleString('ko-KR')+'원</td>';
- fixedRow+='<td style="padding:5px 8px;text-align:right;font-family:var(--mn);font-size:12px;color:#8B5E00">'+(price?cogsPct+'%':'—')+'</td>';
- fixedRow+='<td style="padding:5px 4px;text-align:center"><button onclick="refreshCogsInRoas()" title="생산탭에서 다시 불러오기" style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:13px">↻</button></td>';
- fixedRow+='</tr>';
- tbody.innerHTML=fixedRow+roasData.map((r,i)=>{
+ // 합계 계산용
+ let sumAmt=0, sumPct=0;
+ tbody.innerHTML=roasData.map((r,i)=>{
   // 초기 값 산출: 한쪽이 비어있으면 반대쪽에서 자동 계산
   let amt=r.amount||0, pct=r.pct||0;
   if(!amt && pct && price) amt=Math.round(price*pct/100);
   else if(!pct && amt && price) pct=Math.round((amt/price)*1000)/10;
-  return`<tr style="border-bottom:.5px solid var(--bd)" data-roas-row="${i}">
-   <td style="padding:5px 8px"><input value="${(r.name||'').replace(/"/g,'&quot;')}" onchange="roasData[${i}].name=this.value;sv()" style="border:none;background:transparent;font-size:12px;outline:none;width:100%"></td>
+  // 합계 누적
+  sumAmt += amt;
+  sumPct += pct;
+  // 원가 행은 시각적 강조 (노란 배경)
+  const isCogs = (r.name||'').includes('원가');
+  const rowBg = isCogs ? 'background:#FFFDE7;' : '';
+  const nameColor = isCogs ? 'color:#8B5E00;font-weight:600;' : '';
+  return`<tr style="border-bottom:.5px solid var(--bd);${rowBg}" data-roas-row="${i}">
+   <td style="padding:5px 8px"><input value="${(r.name||'').replace(/"/g,'&quot;')}" onchange="roasData[${i}].name=this.value;sv()" style="border:none;background:transparent;font-size:12px;outline:none;width:100%;${nameColor}"></td>
    <td style="padding:5px 8px;text-align:right">
     <input type="number" id="roas-amt-${i}" value="${amt||''}" onchange="setRoasAmount(${i},this.value)"
-     style="width:85px;border:none;border-bottom:1px dashed var(--bd);background:transparent;font-family:var(--mn);font-size:12px;text-align:right;outline:none" placeholder="0">
+     style="width:85px;border:none;border-bottom:1px dashed var(--bd);background:transparent;font-family:var(--mn);font-size:12px;text-align:right;outline:none;${nameColor}" placeholder="0">
    </td>
    <td style="padding:5px 8px;text-align:right">
     <input type="number" step="0.1" id="roas-pct-${i}" value="${pct||''}" onchange="setRoasPct(${i},this.value)" placeholder="0"
-     style="width:50px;border:none;border-bottom:1px dashed var(--bd);background:transparent;font-family:var(--mn);font-size:12px;text-align:right;outline:none">%
+     style="width:50px;border:none;border-bottom:1px dashed var(--bd);background:transparent;font-family:var(--mn);font-size:12px;text-align:right;outline:none;${nameColor}">%
    </td>
-   <td style="padding:5px 4px"><button onclick="removeRoasRow(${i})" style="background:none;border:none;color:var(--hi);cursor:pointer;font-size:11px">✕</button></td>
+   <td style="padding:5px 4px"><button onclick="removeRoasRow(${i})" style="background:none;border:none;color:var(--hi);cursor:pointer;font-size:11px" title="삭제">✕</button></td>
   </tr>`;
  }).join('');
+ // tfoot 합계 행 추가
+ const tfoot=tbody.parentElement?tbody.parentElement.querySelector('tfoot'):null;
+ if(tfoot){
+  tfoot.innerHTML='<tr style="background:#E3F2FD;border-top:2px solid var(--bd);font-weight:600">'
+   +'<td style="padding:7px 8px;color:#1565C0">합계</td>'
+   +'<td style="padding:7px 8px;text-align:right;font-family:var(--mn);color:#1565C0;font-size:13px">'+sumAmt.toLocaleString('ko-KR')+'원</td>'
+   +'<td style="padding:7px 8px;text-align:right;font-family:var(--mn);color:#1565C0">'+(Math.round(sumPct*10)/10)+'%</td>'
+   +'<td></td></tr>';
+ }
  calcROAS2();
 }
 
@@ -2630,12 +2646,26 @@ function setRoasPct(i,val){
 }
 
 function refreshCogsInRoas(){
- renderRoasRows();
- calcROAS2();
+ // 생산탭에서 VAT 포함 원가 산출
+ const cogsTotal=(cogsData||[]).reduce((s,r)=>s+((r.unitPrice||r.amount)||0),0);
+ const cogsWithVAT=Math.round(cogsTotal*1.1);
+ // 기존 "원가 (VAT포함)" 항목 찾기
+ if(!Array.isArray(roasData))roasData=[];
+ const idx=roasData.findIndex(r=>(r.name||'').indexOf('원가')>=0);
+ if(idx>=0){
+  // 기존 항목 업데이트 (맨 위로 이동)
+  const existing=roasData.splice(idx,1)[0];
+  existing.name='원가 (VAT포함)';
+  existing.amount=cogsWithVAT;
+  existing.pct=0; // 재계산됨
+  roasData.unshift(existing);
+ } else {
+  // 새로 추가 (맨 위에)
+  roasData.unshift({id:'r-cogs-'+Date.now(),name:'원가 (VAT포함)',amount:cogsWithVAT,pct:0});
+ }
+ sv();renderRoasRows();
  if(typeof showToast==='function'){
-  const cogsTotal=(cogsData||[]).reduce((s,r)=>s+((r.unitPrice||r.amount)||0),0);
-  const cogsWithVAT=Math.round(cogsTotal*1.1);
-  showToast('✅ 생산탭 원가 '+cogsWithVAT.toLocaleString('ko-KR')+'원(VAT포함) 재반영','grn');
+  showToast('✅ 생산탭 원가 '+cogsWithVAT.toLocaleString('ko-KR')+'원(VAT포함) 반영','grn');
  }
 }
 var prodExpData2=[];
@@ -2699,13 +2729,9 @@ function removeRoasRow(i){roasData.splice(i,1);renderRoasRows();sv();}
 function calcROAS2(){
  var price=parseFloat(document.getElementById('roas-price2')?.value)||0;
  var N=function(n){return n.toLocaleString('ko-KR');};
- // 생산탭의 VAT 포함 원가 자동 합산
- var cogsTotal=(typeof cogsData!=='undefined'&&Array.isArray(cogsData))?
-  cogsData.reduce(function(s,r){return s+((r.unitPrice||r.amount)||0);},0):0;
- var cogsWithVAT=Math.round(cogsTotal*1.1);
- var totalCost=cogsWithVAT; // 원가부터 시작
+ // roasData 의 모든 항목 합산 (원가는 "생산원가 불러오기" 버튼으로 roasData 에 들어있음)
+ var totalCost=0;
  (roasData||[]).forEach(function(r){
-  // 고정/비율 방식 구분 (신 로직): amount 또는 pct 둘 중 하나만 사용
   if(r.amount) totalCost+=r.amount;
   else if(r.pct&&price) totalCost+=(price*r.pct/100);
  });
@@ -3206,7 +3232,138 @@ function buildIdea(){
    </div>
   </div></div>
  </div>`;
+ // 브랜드 아이디어 비교표 + 체크리스트는 4b 서브탭에서 별도 렌더
 }
+
+function renderBrandIdeaTable(){
+ const wrap=document.getElementById('idea4b-panel');if(!wrap)return;
+ if(!brandIdeaData||!Array.isArray(brandIdeaData)||!brandIdeaData.length){
+  brandIdeaData=DEF_BRAND_IDEAS.map(function(r){return Object.assign({},r);});
+ }
+ // 기존 섹션이 있으면 재생성, 없으면 append
+ let existing=document.getElementById('brand-idea-section');
+ if(existing)existing.remove();
+ const sec=document.createElement('div');
+ sec.id='brand-idea-section';
+ sec.className='section';
+ sec.style.marginTop='14px';
+ let html2='<div class="sec-head"><h3>🏛 브랜드 아이디어 비교표</h3>';
+ html2+='<button class="btn" onclick="addBrandIdeaRow()">+ 브랜드 추가</button></div>';
+ html2+='<div class="sec-body" style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:1100px">';
+ html2+='<thead><tr style="background:var(--bg);border-bottom:2px solid var(--bd)">';
+ html2+='<th style="padding:6px 8px;text-align:left;width:120px">브랜드</th>';
+ html2+='<th style="padding:6px 8px;text-align:left;width:140px">심상/헤리티지</th>';
+ html2+='<th style="padding:6px 8px;text-align:left">시그니처 원료</th>';
+ html2+='<th style="padding:6px 8px;text-align:left">기능 성분</th>';
+ html2+='<th style="padding:6px 8px;text-align:left;width:130px">컨셉 한 줄</th>';
+ html2+='<th style="padding:6px 8px;text-align:left;width:120px">타겟</th>';
+ html2+='<th style="padding:6px 8px;text-align:left;width:100px">가격</th>';
+ html2+='<th style="padding:6px 8px;text-align:left">차별화</th>';
+ html2+='<th style="width:28px"></th>';
+ html2+='</tr></thead><tbody>';
+ brandIdeaData.forEach(function(row,i){
+  const isOurs=(row.brand||'').includes('신규')||(row.brand||'').includes('우리');
+  const rowBg=isOurs?'background:#FFFDE7;':'';
+  const fontWeight=isOurs?'font-weight:600;':'';
+  html2+='<tr style="border-bottom:.5px solid var(--bd);'+rowBg+'">';
+  const fields=[{k:'brand',w:'120px'},{k:'heritage',w:'140px'},{k:'signature',w:''},{k:'functional',w:''},{k:'concept',w:'130px'},{k:'target',w:'120px'},{k:'price',w:'100px'},{k:'diff',w:''}];
+  fields.forEach(function(f){
+   const val=(row[f.k]||'').replace(/"/g,'&quot;');
+   html2+='<td style="padding:4px 6px;vertical-align:top"><textarea onchange="brandIdeaData['+i+'].'+f.k+'=this.value;sv()" style="width:100%;min-height:30px;border:none;background:transparent;font-size:11px;color:var(--tx);outline:none;resize:vertical;font-family:inherit;line-height:1.4;'+fontWeight+'" rows="2">'+val+'</textarea></td>';
+  });
+  html2+='<td style="padding:4px 4px;text-align:center;vertical-align:top"><button onclick="removeBrandIdeaRow('+i+')" style="background:none;border:none;color:var(--hi);cursor:pointer;font-size:11px">✕</button></td>';
+  html2+='</tr>';
+ });
+ html2+='</tbody></table></div>';
+ sec.innerHTML=html2;
+ wrap.appendChild(sec);
+}
+function addBrandIdeaRow(){
+ if(!brandIdeaData)brandIdeaData=[];
+ brandIdeaData.push({brand:'새 브랜드',heritage:'',signature:'',functional:'',concept:'',target:'',price:'',diff:''});
+ sv();renderBrandIdeaTable();
+}
+function removeBrandIdeaRow(i){
+ if(!confirm('삭제하시겠습니까?'))return;
+ brandIdeaData.splice(i,1);sv();renderBrandIdeaTable();
+}
+
+function renderBrandChecklist(){
+ const wrap=document.getElementById('idea4b-panel');if(!wrap)return;
+ if(!brandChecksData||!Array.isArray(brandChecksData)||!brandChecksData.length){
+  brandChecksData=DEF_BRAND_CHECKS.map(function(r){return Object.assign({},r);});
+ }
+ let existing=document.getElementById('brand-checklist-section');
+ if(existing)existing.remove();
+ const sec=document.createElement('div');
+ sec.id='brand-checklist-section';
+ sec.className='section';
+ sec.style.marginTop='14px';
+ // 완성도 게이지 계산
+ const total=brandChecksData.length;
+ const yesCount=brandChecksData.filter(function(q){return q.answer==='YES';}).length;
+ const pct=total?Math.round(yesCount/total*100):0;
+ let html2='<div class="sec-head"><h3>✅ 브랜드 완성도 체크리스트</h3>';
+ html2+='<button class="btn" onclick="addBrandCheck()">+ 질문 추가</button></div>';
+ html2+='<div class="sec-body">';
+ // 상단 종합 게이지
+ html2+='<div style="margin-bottom:16px;padding:12px 14px;background:var(--bg);border-radius:8px">';
+ html2+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+ html2+='<span style="font-size:12px;font-weight:600">브랜드 완성도</span>';
+ html2+='<span style="font-size:14px;font-weight:700;font-family:var(--mn);color:'+(pct>=66?'#2E7D32':pct>=33?'#F57F17':'#C62828')+'">'+yesCount+' / '+total+' ('+pct+'%)</span>';
+ html2+='</div>';
+ html2+='<div style="height:10px;background:var(--bd);border-radius:5px;overflow:hidden">';
+ html2+='<div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#F57F17 0%,#2E7D32 100%);transition:width .4s"></div>';
+ html2+='</div></div>';
+ // 질문 카드들
+ brandChecksData.forEach(function(q,i){
+  const isYes=q.answer==='YES';
+  const isNo=q.answer==='NO';
+  html2+='<div style="margin-bottom:14px;padding:12px 14px;border:1px solid var(--bd);border-radius:8px;background:var(--sur)">';
+  html2+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px">';
+  html2+='<div style="flex:1"><textarea onchange="brandChecksData['+i+'].question=this.value;sv()" style="width:100%;border:none;background:transparent;font-size:12px;font-weight:500;color:var(--tx);outline:none;resize:vertical;min-height:36px;font-family:inherit;line-height:1.5" rows="2">'+(q.question||'').replace(/"/g,'&quot;')+'</textarea></div>';
+  html2+='<button onclick="removeBrandCheck('+i+')" style="background:none;border:none;color:var(--hi);cursor:pointer;font-size:13px;flex-shrink:0" title="삭제">✕</button>';
+  html2+='</div>';
+  // 예시
+  html2+='<textarea onchange="brandChecksData['+i+'].example=this.value;sv()" placeholder="예시 / 참고" style="width:100%;border:none;background:transparent;font-size:10px;color:var(--mu);outline:none;resize:vertical;min-height:28px;font-family:inherit;line-height:1.5;margin-bottom:8px" rows="2">'+(q.example||'').replace(/"/g,'&quot;')+'</textarea>';
+  // 개별 게이지
+  const rowPct=isYes?100:0;
+  html2+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">';
+  html2+='<div style="flex:1;height:6px;background:var(--bd);border-radius:3px;overflow:hidden">';
+  html2+='<div style="height:100%;width:'+rowPct+'%;background:'+(isYes?'#2E7D32':'#C62828')+';transition:width .3s"></div>';
+  html2+='</div>';
+  html2+='<span style="font-size:10px;font-family:var(--mn);color:'+(isYes?'#2E7D32':isNo?'#C62828':'var(--mu)')+';min-width:40px;text-align:right">'+(isYes?'✓ YES':isNo?'✗ NO':'미답변')+'</span>';
+  html2+='</div>';
+  // YES/NO/미답변 버튼
+  html2+='<div style="display:flex;gap:6px;margin-bottom:8px">';
+  const btnStyle='padding:4px 14px;border:1px solid var(--bd);border-radius:5px;font-size:11px;cursor:pointer;';
+  html2+='<button onclick="setBrandCheck('+i+',\'YES\')" style="'+btnStyle+'background:'+(isYes?'#2E7D32':'var(--bg)')+';color:'+(isYes?'#FFF':'var(--tx)')+';font-weight:'+(isYes?'600':'400')+'">YES</button>';
+  html2+='<button onclick="setBrandCheck('+i+',\'NO\')" style="'+btnStyle+'background:'+(isNo?'#C62828':'var(--bg)')+';color:'+(isNo?'#FFF':'var(--tx)')+';font-weight:'+(isNo?'600':'400')+'">NO</button>';
+  html2+='<button onclick="setBrandCheck('+i+',\'\')" style="'+btnStyle+'background:var(--bg);color:var(--mu)">초기화</button>';
+  html2+='</div>';
+  // 답변/메모
+  html2+='<textarea onchange="brandChecksData['+i+'].note=this.value;sv()" placeholder="답변 / 메모 (왜 YES인지, NO이면 어떻게 할지)" style="width:100%;padding:6px 8px;border:1px solid var(--bd);border-radius:5px;background:var(--bg);font-size:11px;color:var(--tx);outline:none;resize:vertical;min-height:50px;font-family:inherit;line-height:1.5" rows="3">'+(q.note||'').replace(/"/g,'&quot;')+'</textarea>';
+  html2+='</div>';
+ });
+ html2+='</div>';
+ sec.innerHTML=html2;
+ wrap.appendChild(sec);
+}
+function setBrandCheck(i,val){
+ if(!brandChecksData)return;
+ brandChecksData[i].answer=val;
+ sv();renderBrandChecklist();
+}
+function addBrandCheck(){
+ if(!brandChecksData)brandChecksData=[];
+ brandChecksData.push({id:'q'+Date.now(),question:'새 질문',example:'',answer:'',note:''});
+ sv();renderBrandChecklist();
+}
+function removeBrandCheck(i){
+ if(!confirm('질문을 삭제하시겠습니까?'))return;
+ brandChecksData.splice(i,1);sv();renderBrandChecklist();
+}
+
 function saveIdea(){sv();buildIdea();buildIdeaIngredients();showToast('아이디어 저장 완료');}
 
 // ============================================================
@@ -3238,6 +3395,22 @@ function showCostTab(tab, btn){
  if(tab==='prodexp'){renderProdExpRows2();}
  if(tab==='cost')renderCosts();
 }
+function showIdeaSubTab(which,btn){
+ const panelA=document.getElementById('idea4a-panel');
+ const panelB=document.getElementById('idea4b-panel');
+ const btnA=document.getElementById('idea4a-tab-btn');
+ const btnB=document.getElementById('idea4b-tab-btn');
+ if(panelA)panelA.style.display=which==='4a'?'block':'none';
+ if(panelB)panelB.style.display=which==='4b'?'block':'none';
+ if(btnA)btnA.className=which==='4a'?'stab act':'stab';
+ if(btnB)btnB.className=which==='4b'?'stab act':'stab';
+ // 4b 첫 진입 시 렌더
+ if(which==='4b'){
+  if(typeof renderBrandIdeaTable==='function')renderBrandIdeaTable();
+  if(typeof renderBrandChecklist==='function')renderBrandChecklist();
+ }
+}
+
 function renderCosts(){
  const tbody=document.getElementById('cost-body');if(!tbody)return;
  tbody.innerHTML=costData.map((item,i)=>`<tr>
@@ -4803,6 +4976,31 @@ const DEF_INGR_ROWS=[
 var ingrData=null; // load() 에서 채워짐
 var mechanismTitle='트라베란™ 4중 기미 방어 메커니즘'; // 편집 가능
 
+// 브랜드 아이디어 비교표 기본 데이터
+const DEF_BRAND_IDEAS=[
+ {brand:'위자드조선', heritage:'조선 + 누룩 + 발효', signature:'아스퍼질러스발효물 73,462ppm + 갈락토미세스 + 율무수', functional:'나이아신아마이드, 트라넥사믹애씨드', concept:'조선의 전통 × 약국 신뢰', target:'40-50대 갱년기 여성', price:'28,000원 (정가 59,900)', diff:'약국·피부과 유통 + 함익병 원장 유튜브'},
+ {brand:'조선테라피', heritage:'조선 + 한방', signature:'11가지 한방 약초 + 스피큘', functional:'쌀 발효 여과물, 여주추출물 (순광라인)', concept:'Timeless Wisdom × Modern Science', target:'30-40대 고민성 피부', price:'33,900원 (30ml)', diff:'율무라인·순광라인 2개 라인'},
+ {brand:'메디큐브 PDRN', heritage:'더마 코스메틱', signature:'PDRN (연어 DNA)', functional:'히알루론산, 펩타이드', concept:'의료급 재생', target:'20-30대 자기관리', price:'35,000~45,000원', diff:'의료 시술 연상 성분'},
+ {brand:'닥터멜락신', heritage:'연구실 더마', signature:'트라넥삼산-펩타이드 특허 성분', functional:'트라넥삼산 3.5%', concept:'피부과 전문의 처방급', target:'30-40대 기미 고민', price:'30,000원대', diff:'부작용 치료비 보상 정책'},
+ {brand:'아누아', heritage:'더마 + 자연', signature:'어성초 77%', functional:'나이아신아마이드, 판테놀', concept:'심플한 자연 더마', target:'20-30대 민감성', price:'20,000원대', diff:'단일 허브 포커스, 글로벌 베스트셀러'},
+ {brand:'신규 브랜드 (우리)', heritage:'(결정 필요)', signature:'(결정 필요)', functional:'트라넥삼산 5% + 나이아신아마이드 5% + 스쿠알란 3%', concept:'(결정 필요)', target:'30-45세 기미 고민', price:'38,000원 (50g 예정)', diff:'4중 방어 메커니즘'}
+];
+var brandIdeaData=null;
+
+// 브랜드 아이디어 체크리스트 기본 데이터
+const DEF_BRAND_CHECKS=[
+ {id:'q1',question:'소비자가 브랜드를 봤을 때 개념을 시각적으로 이해할 수 있는 시각적 서사/헤리티지가 있는가?',
+  example:'위자드조선=조선의 전통 / 청미정=자연의 원료 / 메디큐브=더마 코스메틱 / 닥터멜락신=연구실 / 아누아=더마+자연 (헤리티지 없이도 성공 가능)',
+  answer:'',note:''},
+ {id:'q2',question:'소비자가 "뭐가 들었는데?"를 바로 연상할 수 있는 단 하나의 상징 원료가 있는가?',
+  example:'위자드조선=아스퍼질러스 발효물 73,462ppm / 아누아=어성초 / 메디큐브=PDRN / 조선테라피=스피큘 (트라넥삼산·나이아신은 기본, 그 외 +α)',
+  answer:'',note:''},
+ {id:'q3',question:'아누아·Dr.G처럼 더마+자연/명확한 컨셉으로, 위의 심상 컨셉을 포기하고 진행할 것인가?',
+  example:'심상 컨셉 포기 시: 과학·기능 소구로 단순화. 심상 컨셉 유지 시: 서사·헤리티지 투자 필요',
+  answer:'',note:''}
+];
+var brandChecksData=null;
+
 
 var clinicalItems=[
  {id:'ci01',name:'색소침착지수(MI) 개선 시험',status:'미시작',target:'35% 이상 개선',result:'',period:'8주',cost:3500000,note:'Mexameter 측정 / 기미 케어 핵심 임상',required:true,
@@ -5221,6 +5419,8 @@ function load(){
    orgData=d.org||JSON.parse(JSON.stringify(orgData));
    if(d.ingrData&&Array.isArray(d.ingrData)&&d.ingrData.length)ingrData=d.ingrData;
    if(d.mechanismTitle)mechanismTitle=d.mechanismTitle;
+   if(d.brandIdeaData&&Array.isArray(d.brandIdeaData)&&d.brandIdeaData.length)brandIdeaData=d.brandIdeaData;
+   if(d.brandChecksData&&Array.isArray(d.brandChecksData)&&d.brandChecksData.length)brandChecksData=d.brandChecksData;
   }else{
    allData=[...DD_0,...DD_1,...DD_2,...DD_3];revData=[...DEF_REVIEWS];ideaData={...DEF_IDEA};
    mapPos={};mapCustomItems=[];costData=[...DEF_COSTS];expenseData=[];vendorData=[...DEF_VENDORS];
