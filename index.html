@@ -469,14 +469,14 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
     </div>
     <div class="nav-row">
       <button class="tab-btn" onclick="showTab('t10',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">⑪ 개발의뢰서</span><button class="tab-del" onclick="deleteTabByBtn(this,'t10',event)">✕</button></button>
-      <button class="tab-btn" onclick="showTab('t11',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">⑫ 가중목</span><button class="tab-del" onclick="deleteTabByBtn(this,'t11',event)">✕</button></button>
-      <button class="tab-btn" onclick="showTab('t12',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">⑬ 패키지/로고</span><button class="tab-del" onclick="deleteTabByBtn(this,'t12',event)">✕</button></button>
+            <button class="tab-btn" onclick="showTab('t12',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">⑫ 패키지/로고</span><button class="tab-del" onclick="deleteTabByBtn(this,'t12',event)">✕</button></button>
       <button class="tab-btn" onclick="showTab('t17b',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">🎨 심상</span><button class="tab-del" onclick="deleteTabByBtn(this,'t17b',event)">✕</button></button>
-      <button class="tab-btn" onclick="showTab('t13',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">⑭ 상세페이지</span><button class="tab-del" onclick="deleteTabByBtn(this,'t13',event)">✕</button></button>
+      <button class="tab-btn" onclick="showTab('t13',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">⑬ 상세페이지</span><button class="tab-del" onclick="deleteTabByBtn(this,'t13',event)">✕</button></button>
       
-      <button class="tab-btn" onclick="showTab('t15',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">⑯ 광고기획</span><button class="tab-del" onclick="deleteTabByBtn(this,'t15',event)">✕</button></button>
-      <button class="tab-btn" onclick="showTab('t16',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">⑰ 조직구성표</span><button class="tab-del" onclick="deleteTabByBtn(this,'t16',event)">✕</button></button>
-      <button class="tab-btn" onclick="showTab('t19',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">🧠 설득심리</span><button class="tab-del" onclick="deleteTabByBtn(this,'t19',event)">✕</button></button>
+      <button class="tab-btn" onclick="showTab('t15',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">⑭ 광고기획</span><button class="tab-del" onclick="deleteTabByBtn(this,'t15',event)">✕</button></button>
+<button class="tab-btn" onclick="showTab('t11',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">⑮ 가중목</span><button class="tab-del" onclick="deleteTabByBtn(this,'t11',event)">✕</button></button>
+      <button class="tab-btn" onclick="showTab('t16',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">⑯ 조직구성표</span><button class="tab-del" onclick="deleteTabByBtn(this,'t16',event)">✕</button></button>
+      <button class="tab-btn" onclick="showTab('t19',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">🧠 설득심리·카피</span><button class="tab-del" onclick="deleteTabByBtn(this,'t19',event)">✕</button></button>
       <button class="tab-btn" onclick="showTab('t18',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">🔬 임상체크</span><button class="tab-del" onclick="deleteTabByBtn(this,'t18',event)">✕</button></button>
       <button class="tab-btn" onclick="document.getElementById('save-hist-wrap').style.display=document.getElementById('save-hist-wrap').style.display==='none'?'block':'none';updateSaveSizeLabel()" style="color:rgba(255,255,255,.6)"><span>💾 저장관리</span></button>
     </div>
@@ -840,6 +840,7 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
     <button class="stab" onclick="showCostTab('prodexp',this)">🏭 지출-생산</button>
     <button class="stab" onclick="showCostTab('adexp',this)">📢 지출-광고비</button>
     <button class="stab" onclick="showCostTab('allexp',this)">📋 지출-전체</button>
+    <button class="stab" onclick="showCostTab('totalbudget',this)" style="border-left:2px solid var(--bd);padding-left:14px">💎 총 예산</button>
   </div>
   <div id="cost-tab-panel">
 <div style="padding:12px 18px">
@@ -1153,11 +1154,19 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
 </div>
 <div id="allexp-tab-panel" style="display:none;padding:14px 18px">
   <div class="section" style="margin:0">
-    <div class="sec-head"><h3>📋 전체 지출 현황</h3></div>
+    <div class="sec-head"><h3>📋 전체 지출 현황</h3><span style="font-size:10px;color:var(--mu)">예산 대비 소진율 · 잔여 예산 한눈에</span></div>
     <div class="sec-body" id="allexp-wrap">
       <div style="padding:20px;text-align:center;color:var(--hi);font-size:12px">
         준비비용 탭과 지출기록 탭의 데이터를 종합하여 표시됩니다.
       </div>
+    </div>
+  </div>
+</div>
+<div id="totalbudget-tab-panel" style="display:none;padding:14px 18px">
+  <div class="section" style="margin:0">
+    <div class="sec-head"><h3>💎 총 예산 대시보드</h3><span style="font-size:10px;color:var(--mu)">총 예산 − 총 지출 = 총 잔여 예산 (카테고리·항목별 세부 보기)</span></div>
+    <div class="sec-body" id="totalbudget-wrap">
+      <div style="padding:20px;text-align:center;color:var(--hi);font-size:12px">총 예산 데이터를 종합하여 표시합니다.</div>
     </div>
   </div>
 </div>
@@ -2299,23 +2308,71 @@ function renderProdSummary(){
 function renderAllExpenses(){
  const wrap=document.getElementById('allexp-wrap');if(!wrap)return;
  const N=n=>(n||0).toLocaleString('ko-KR');
+ // ━━━ 예산 산출 ━━━
+ // 준비비용 예산 = costData의 VAT 포함 합계
+ const prepBudget=(costData||[]).reduce((s,c)=>s+((parseFloat(c.amount)||0)*1.1),0);
+ // 생산 예산 = cogsData의 초도투자금(단가×MOQ)×1.1
+ const prodBudget=(cogsData||[]).reduce((s,r)=>s+((r.unitPrice||r.amount||0)*(r.moq||0)),0)*1.1;
+ // 광고 예산 = adSpendBudget + monthlyAdsData 월별 예산 합계
+ let adBudget=parseFloat(adSpendBudget)||0;
+ if(typeof monthlyAdsData==='object'&&monthlyAdsData){
+  Object.keys(monthlyAdsData).forEach(y=>{
+   const yd=monthlyAdsData[y];
+   if(yd&&Array.isArray(yd.months))yd.months.forEach(m=>{adBudget+=(parseFloat(m.budget)||0);});
+  });
+ }
+ // ━━━ 지출 산출 ━━━
  const cats=[
-  {label:'판매준비 지출',color:'#1565C0',data:expenseData||[]},
-  {label:'생산 지출',color:'#2E7D32',data:prodExpenseData||[]},
-  {label:'광고비 지출',color:'#C62828',data:adExpenseData||[]},
+  {key:'prep',label:'판매준비',color:'#1565C0',bg:'#E3F2FD',data:expenseData||[],budget:prepBudget},
+  {key:'prod',label:'생산',color:'#2E7D32',bg:'#E8F5E9',data:prodExpenseData||[],budget:prodBudget},
+  {key:'ad',label:'광고비',color:'#C62828',bg:'#FFEBEE',data:adExpenseData||[],budget:adBudget},
  ];
- const grandTotal=cats.reduce((s,cat)=>s+cat.data.reduce((ss,it)=>ss+(parseFloat(it.amount)||0),0),0);
+ const grandSpent=cats.reduce((s,cat)=>s+cat.data.reduce((ss,it)=>ss+(parseFloat(it.amount)||0),0),0);
+ const grandBudget=cats.reduce((s,cat)=>s+(cat.budget||0),0);
+ const grandRemain=grandBudget-grandSpent;
+ const grandPct=grandBudget?Math.min(100,Math.round(grandSpent/grandBudget*100)):0;
+ // ━━━ 렌더링 ━━━
  wrap.innerHTML=`
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--bd)">
-   <div style="font-size:14px;font-weight:600;color:var(--tx)">총 지출 합계</div>
-   <div style="font-size:20px;font-weight:700;font-family:var(--mn);color:var(--red)">${N(grandTotal)}원</div>
+  <!-- 상단 종합 예산/지출/잔여 요약 -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+   <div style="background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:12px;text-align:center">
+    <div style="font-size:10px;color:var(--mu);margin-bottom:4px">총 예산</div>
+    <div style="font-size:17px;font-weight:600;font-family:var(--mn);color:var(--tx)">${N(Math.round(grandBudget))}원</div>
+   </div>
+   <div style="background:#FFEBEE;border:1px solid #FFCDD2;border-radius:8px;padding:12px;text-align:center">
+    <div style="font-size:10px;color:#C62828;margin-bottom:4px">총 지출</div>
+    <div style="font-size:17px;font-weight:600;font-family:var(--mn);color:var(--red)">${N(Math.round(grandSpent))}원</div>
+   </div>
+   <div style="background:#E8F5E9;border:1px solid #A5D6A7;border-radius:8px;padding:12px;text-align:center">
+    <div style="font-size:10px;color:#2E7D32;margin-bottom:4px">잔여 예산</div>
+    <div style="font-size:17px;font-weight:600;font-family:var(--mn);color:${grandRemain<0?'var(--red)':'var(--green)'}">${N(Math.round(grandRemain))}원</div>
+   </div>
+   <div style="background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:12px;text-align:center">
+    <div style="font-size:10px;color:var(--mu);margin-bottom:4px">소진율</div>
+    <div style="font-size:17px;font-weight:600;font-family:var(--mn);color:${grandPct>=80?'var(--red)':grandPct>=50?'var(--amber)':'var(--green)'}">${grandBudget?grandPct+'%':'—'}</div>
+   </div>
   </div>
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
-   ${cats.map(cat=>{const t=cat.data.reduce((s,it)=>s+(parseFloat(it.amount)||0),0);return`<div style="background:var(--sur);border:1px solid var(--bd);border-radius:8px;padding:10px;text-align:center;border-top:3px solid ${cat.color}"><div style="font-size:10px;color:var(--mu);margin-bottom:3px">${cat.label}</div><div style="font-size:16px;font-weight:600;font-family:var(--mn);color:${cat.color}">${N(t)}원</div></div>`;}).join('')}
+  <!-- 카테고리별 예산·지출·잔여 카드 (게이지) -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px">
+   ${cats.map(cat=>{
+    const spent=cat.data.reduce((s,it)=>s+(parseFloat(it.amount)||0),0);
+    const remain=(cat.budget||0)-spent;
+    const pct=cat.budget?Math.min(100,Math.round(spent/cat.budget*100)):0;
+    return`<div style="background:${cat.bg};border:1px solid ${cat.color}40;border-top:3px solid ${cat.color};border-radius:8px;padding:12px">
+     <div style="font-size:12px;font-weight:600;color:${cat.color};margin-bottom:8px">${cat.label}</div>
+     <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;color:var(--mu)">예산</span><span style="font-size:12px;font-family:var(--mn);font-weight:500">${N(Math.round(cat.budget))}원</span></div>
+     <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;color:var(--mu)">지출</span><span style="font-size:12px;font-family:var(--mn);color:${cat.color}">${N(Math.round(spent))}원</span></div>
+     <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:10px;color:var(--mu)">잔여</span><span style="font-size:12px;font-family:var(--mn);font-weight:600;color:${remain<0?'var(--red)':'var(--green)'}">${N(Math.round(remain))}원</span></div>
+     <div style="height:6px;background:#FFFFFF80;border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${cat.color};transition:width .3s"></div></div>
+     <div style="margin-top:3px;text-align:right;font-size:10px;color:var(--mu);font-family:var(--mn)">${cat.budget?pct+'%':'—'} 소진</div>
+    </div>`;
+   }).join('')}
   </div>
+  <!-- 상세 지출 내역 테이블 -->
+  <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--tx)">📜 상세 지출 내역</div>
   <table style="width:100%;border-collapse:collapse;font-size:12px">
    <thead><tr style="background:var(--bg);border-bottom:2px solid var(--bd)">
-    <th style="padding:6px 8px;text-align:left">구분</th>
+    <th style="padding:6px 8px;text-align:left;width:90px">구분</th>
     <th style="padding:6px 8px;text-align:left">항목</th>
     <th style="padding:6px 8px;text-align:right;width:110px">금액</th>
    </tr></thead>
@@ -2324,9 +2381,151 @@ function renderAllExpenses(){
      <td style="padding:5px 8px"><span style="font-size:9px;background:${cat.color}20;color:${cat.color};padding:1px 5px;border-radius:3px">${cat.label}</span></td>
      <td style="padding:5px 8px">${it.name||''}</td>
      <td style="padding:5px 8px;text-align:right;font-family:var(--mn)">${N(it.amount||0)}원</td>
-    </tr>`).join('')).join('')}
+    </tr>`).join('')).join('')||'<tr><td colspan="3" style="padding:20px;text-align:center;color:var(--hi)">지출 내역이 없습니다</td></tr>'}
    </tbody>
   </table>`;
+}
+
+function renderTotalBudget(){
+ const wrap=document.getElementById('totalbudget-wrap');if(!wrap)return;
+ const N=n=>(n||0).toLocaleString('ko-KR');
+ 
+ // ━━━ 준비비용 예산 (항목별) ━━━
+ const prepItems=(costData||[]).map(c=>({
+  name:c.name||'항목',
+  ex:parseFloat(c.amount)||0,
+  vat:Math.round((parseFloat(c.amount)||0)*0.1),
+  inc:Math.round((parseFloat(c.amount)||0)*1.1)
+ }));
+ const prepBudget=prepItems.reduce((s,i)=>s+i.inc,0);
+ const prepSpent=(expenseData||[]).reduce((s,it)=>s+(parseFloat(it.amount)||0),0);
+ const prepRemain=prepBudget-prepSpent;
+ 
+ // ━━━ 생산 예산 (항목별) ━━━
+ const prodItems=(cogsData||[]).map(r=>{
+  const u=r.unitPrice||r.amount||0;
+  const m=r.moq||0;
+  const base=u*m;
+  return {
+   name:r.name||'항목',
+   unit:u,
+   moq:m,
+   ex:base,
+   vat:Math.round(base*0.1),
+   inc:Math.round(base*1.1)
+  };
+ });
+ const prodBudget=prodItems.reduce((s,i)=>s+i.inc,0);
+ const prodSpent=(prodExpenseData||[]).reduce((s,it)=>s+(parseFloat(it.amount)||0),0);
+ const prodRemain=prodBudget-prodSpent;
+ 
+ // ━━━ 광고비 예산 (초기 + 월별) ━━━
+ const adInitialBudget=parseFloat(adSpendBudget)||0;
+ const adMonthlyItems=[];
+ let adMonthlyBudget=0;
+ if(typeof monthlyAdsData==='object'&&monthlyAdsData){
+  Object.keys(monthlyAdsData).sort().forEach(y=>{
+   const yd=monthlyAdsData[y];
+   if(yd&&Array.isArray(yd.months))yd.months.forEach((m,mi)=>{
+    const b=parseFloat(m.budget)||0;
+    if(b>0){
+     adMonthlyItems.push({name:y+'년 '+(mi+1)+'월',budget:b});
+     adMonthlyBudget+=b;
+    }
+   });
+  });
+ }
+ const adBudget=adInitialBudget+adMonthlyBudget;
+ const adSpent=(adExpenseData||[]).reduce((s,it)=>s+(parseFloat(it.amount)||0),0);
+ const adRemain=adBudget-adSpent;
+ 
+ // ━━━ 총합 ━━━
+ const grandBudget=prepBudget+prodBudget+adBudget;
+ const grandSpent=prepSpent+prodSpent+adSpent;
+ const grandRemain=grandBudget-grandSpent;
+ const grandPct=grandBudget?Math.min(100,Math.round(grandSpent/grandBudget*100)):0;
+ 
+ // ━━━ 렌더링 ━━━
+ let html2='';
+ 
+ // 🎯 상단 종합 카드 (대형)
+ html2+='<div style="display:grid;grid-template-columns:2fr 2fr 2fr 1fr;gap:12px;margin-bottom:20px">';
+ html2+='<div style="background:var(--sur);border:2px solid var(--bd);border-radius:10px;padding:16px">';
+ html2+='<div style="font-size:11px;color:var(--mu);margin-bottom:6px">💰 총 예산</div>';
+ html2+='<div style="font-size:24px;font-weight:700;font-family:var(--mn);color:var(--tx)">'+N(Math.round(grandBudget))+'<span style="font-size:13px;font-weight:500;color:var(--mu)">원</span></div>';
+ html2+='</div>';
+ html2+='<div style="background:#FFEBEE;border:2px solid #FFCDD2;border-radius:10px;padding:16px">';
+ html2+='<div style="font-size:11px;color:#C62828;margin-bottom:6px">📤 총 지출</div>';
+ html2+='<div style="font-size:24px;font-weight:700;font-family:var(--mn);color:var(--red)">'+N(Math.round(grandSpent))+'<span style="font-size:13px;font-weight:500;color:var(--mu)">원</span></div>';
+ html2+='</div>';
+ html2+='<div style="background:#E8F5E9;border:2px solid #A5D6A7;border-radius:10px;padding:16px">';
+ html2+='<div style="font-size:11px;color:#2E7D32;margin-bottom:6px">💚 총 잔여 예산</div>';
+ html2+='<div style="font-size:24px;font-weight:700;font-family:var(--mn);color:'+(grandRemain<0?'var(--red)':'var(--green)')+'">'+N(Math.round(grandRemain))+'<span style="font-size:13px;font-weight:500;color:var(--mu)">원</span></div>';
+ html2+='</div>';
+ html2+='<div style="background:var(--bg);border:2px solid var(--bd);border-radius:10px;padding:16px;text-align:center;display:flex;flex-direction:column;justify-content:center">';
+ html2+='<div style="font-size:11px;color:var(--mu);margin-bottom:4px">소진율</div>';
+ html2+='<div style="font-size:26px;font-weight:700;font-family:var(--mn);color:'+(grandPct>=80?'var(--red)':grandPct>=50?'var(--amber)':'var(--green)')+'">'+(grandBudget?grandPct+'%':'—')+'</div>';
+ html2+='</div>';
+ html2+='</div>';
+ 
+ // 🎯 전체 게이지
+ html2+='<div style="margin-bottom:24px;padding:12px 14px;background:var(--bg);border-radius:8px;border:1px solid var(--bd)">';
+ html2+='<div style="display:flex;justify-content:space-between;margin-bottom:6px">';
+ html2+='<span style="font-size:12px;font-weight:500">전체 예산 소진 현황</span>';
+ html2+='<span style="font-size:11px;font-family:var(--mn);color:var(--mu)">'+N(Math.round(grandSpent))+' / '+N(Math.round(grandBudget))+'원</span>';
+ html2+='</div>';
+ html2+='<div style="height:14px;background:var(--bd);border-radius:7px;overflow:hidden">';
+ html2+='<div style="height:100%;width:'+grandPct+'%;background:linear-gradient(90deg,#2E7D32 0%,#F57F17 70%,#C62828 100%);transition:width .4s"></div>';
+ html2+='</div></div>';
+ 
+ // 🎯 3개 카테고리 세부 카드
+ const cats=[
+  {key:'prep',label:'💰 판매준비',color:'#1565C0',bg:'#E3F2FD',budget:prepBudget,spent:prepSpent,remain:prepRemain,items:prepItems,itemLabel:'준비 비용 항목',displayType:'prep'},
+  {key:'prod',label:'🏭 생산',color:'#2E7D32',bg:'#E8F5E9',budget:prodBudget,spent:prodSpent,remain:prodRemain,items:prodItems,itemLabel:'생산 원가 항목 (단가 × MOQ × 1.1)',displayType:'prod'},
+  {key:'ad',label:'📢 광고비',color:'#C62828',bg:'#FFEBEE',budget:adBudget,spent:adSpent,remain:adRemain,items:adMonthlyItems,itemLabel:'광고 예산 (초기 + 월별)',displayType:'ad',initial:adInitialBudget}
+ ];
+ 
+ html2+='<div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--tx)">📊 카테고리별 상세</div>';
+ html2+='<div style="display:grid;grid-template-columns:1fr;gap:14px">';
+ 
+ cats.forEach(cat=>{
+  const pct=cat.budget?Math.min(100,Math.round(cat.spent/cat.budget*100)):0;
+  html2+='<div style="background:'+cat.bg+';border:1px solid '+cat.color+'40;border-left:4px solid '+cat.color+';border-radius:8px;padding:14px">';
+  html2+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
+  html2+='<div style="font-size:13px;font-weight:600;color:'+cat.color+'">'+cat.label+'</div>';
+  html2+='<div style="font-family:var(--mn);font-size:11px;color:var(--mu)">'+(cat.budget?pct+'% 소진':'예산 미설정')+'</div>';
+  html2+='</div>';
+  // 요약
+  html2+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">';
+  html2+='<div style="background:#FFFFFFB0;border-radius:6px;padding:8px;text-align:center"><div style="font-size:9px;color:var(--mu)">예산</div><div style="font-size:13px;font-weight:600;font-family:var(--mn);margin-top:2px">'+N(Math.round(cat.budget))+'원</div></div>';
+  html2+='<div style="background:#FFFFFFB0;border-radius:6px;padding:8px;text-align:center"><div style="font-size:9px;color:'+cat.color+'">지출</div><div style="font-size:13px;font-weight:600;font-family:var(--mn);margin-top:2px;color:'+cat.color+'">'+N(Math.round(cat.spent))+'원</div></div>';
+  html2+='<div style="background:#FFFFFFB0;border-radius:6px;padding:8px;text-align:center"><div style="font-size:9px;color:var(--mu)">잔여</div><div style="font-size:13px;font-weight:600;font-family:var(--mn);margin-top:2px;color:'+(cat.remain<0?'var(--red)':'var(--green)')+'">'+N(Math.round(cat.remain))+'원</div></div>';
+  html2+='</div>';
+  // 게이지
+  html2+='<div style="height:8px;background:#FFFFFF80;border-radius:4px;overflow:hidden;margin-bottom:12px">';
+  html2+='<div style="height:100%;width:'+pct+'%;background:'+cat.color+';transition:width .3s"></div>';
+  html2+='</div>';
+  // 항목별 세부
+  html2+='<div style="font-size:10px;color:var(--mu);font-weight:500;margin-bottom:6px">'+cat.itemLabel+'</div>';
+  if(cat.displayType==='prep'){
+   html2+='<table style="width:100%;border-collapse:collapse;font-size:10px;background:#FFFFFF70;border-radius:4px"><thead><tr style="border-bottom:.5px solid '+cat.color+'30"><th style="padding:4px 6px;text-align:left">항목</th><th style="padding:4px 6px;text-align:right">원가</th><th style="padding:4px 6px;text-align:right">VAT</th><th style="padding:4px 6px;text-align:right">VAT포함</th></tr></thead><tbody>';
+   cat.items.forEach(i=>{html2+='<tr style="border-bottom:.5px dotted '+cat.color+'20"><td style="padding:3px 6px">'+i.name+'</td><td style="padding:3px 6px;text-align:right;font-family:var(--mn)">'+N(i.ex)+'</td><td style="padding:3px 6px;text-align:right;font-family:var(--mn);color:var(--mu)">'+N(i.vat)+'</td><td style="padding:3px 6px;text-align:right;font-family:var(--mn);font-weight:500">'+N(i.inc)+'원</td></tr>';});
+   html2+='</tbody></table>';
+  } else if(cat.displayType==='prod'){
+   html2+='<table style="width:100%;border-collapse:collapse;font-size:10px;background:#FFFFFF70;border-radius:4px"><thead><tr style="border-bottom:.5px solid '+cat.color+'30"><th style="padding:4px 6px;text-align:left">항목</th><th style="padding:4px 6px;text-align:right">단가</th><th style="padding:4px 6px;text-align:right">MOQ</th><th style="padding:4px 6px;text-align:right">초도투자(VAT포함)</th></tr></thead><tbody>';
+   cat.items.forEach(i=>{html2+='<tr style="border-bottom:.5px dotted '+cat.color+'20"><td style="padding:3px 6px">'+i.name+'</td><td style="padding:3px 6px;text-align:right;font-family:var(--mn)">'+N(i.unit)+'원</td><td style="padding:3px 6px;text-align:right;font-family:var(--mn);color:var(--mu)">'+N(i.moq)+'</td><td style="padding:3px 6px;text-align:right;font-family:var(--mn);font-weight:500">'+N(i.inc)+'원</td></tr>';});
+   html2+='</tbody></table>';
+  } else if(cat.displayType==='ad'){
+   html2+='<table style="width:100%;border-collapse:collapse;font-size:10px;background:#FFFFFF70;border-radius:4px"><thead><tr style="border-bottom:.5px solid '+cat.color+'30"><th style="padding:4px 6px;text-align:left">구분</th><th style="padding:4px 6px;text-align:right">금액</th></tr></thead><tbody>';
+   if(cat.initial>0)html2+='<tr style="border-bottom:.5px dotted '+cat.color+'20"><td style="padding:3px 6px">초기 광고 예산</td><td style="padding:3px 6px;text-align:right;font-family:var(--mn);font-weight:500">'+N(cat.initial)+'원</td></tr>';
+   cat.items.forEach(i=>{html2+='<tr style="border-bottom:.5px dotted '+cat.color+'20"><td style="padding:3px 6px">'+i.name+'</td><td style="padding:3px 6px;text-align:right;font-family:var(--mn)">'+N(i.budget)+'원</td></tr>';});
+   if(!cat.initial&&!cat.items.length)html2+='<tr><td colspan="2" style="padding:8px;text-align:center;color:var(--hi)">광고 예산이 설정되지 않았습니다</td></tr>';
+   html2+='</tbody></table>';
+  }
+  html2+='</div>';
+ });
+ html2+='</div>';
+ wrap.innerHTML=html2;
 }
 
 function calcROAS(){
@@ -3370,7 +3569,7 @@ function saveIdea(){sv();buildIdea();buildIdeaIngredients();showToast('아이디
 // COSTS (t5)
 // ============================================================
 function showCostTab(tab, btn){
- const panels=['cost','expense','adspend','monthly','prod','roas','allexp','adexp','prodexp'];
+ const panels=['cost','expense','adspend','monthly','prod','roas','allexp','adexp','prodexp','totalbudget'];
  panels.forEach(p=>{const el=document.getElementById(p+'-tab-panel');if(el)el.style.display='none';});
  const active=document.getElementById(tab+'-tab-panel');if(active)active.style.display='block';
  // Toggle action buttons
@@ -3394,6 +3593,7 @@ function showCostTab(tab, btn){
  if(tab==='adexp'){renderAdExpRows();}
  if(tab==='prodexp'){renderProdExpRows2();}
  if(tab==='cost')renderCosts();
+ if(tab==='totalbudget')renderTotalBudget();
 }
 function showIdeaSubTab(which,btn){
  const panelA=document.getElementById('idea4a-panel');
@@ -4579,13 +4779,121 @@ var uniquenessData={
 function showP19Tab(tab, btn){
  document.getElementById('p19-principles').style.display = tab==='principles' ? '' : 'none';
  document.getElementById('p19-uniqueness').style.display = tab==='uniqueness' ? '' : 'none';
+ const wEl = document.getElementById('p19-writeup');
+ if(wEl) wEl.style.display = tab==='writeup' ? '' : 'none';
  // 서브탭 버튼 active
  var stabs = document.querySelectorAll('#t19 .stab');
  stabs.forEach(function(b){ b.classList.remove('act'); });
  if(btn) btn.classList.add('act');
  // 특이점 탭일 때 renderUniqueness
  if(tab==='uniqueness') renderUniqueness();
+ if(tab==='writeup'){ loadWriteup(); renderWriteupGaps(); }
 }
+
+// ━━━ 설명글 써보기 데이터 ━━━
+const DEF_WRITEUP_GAPS = [
+ {cat:'노벨상·권위 원리', ref:'2016 노벨 생리의학상 (오토파지)', ours:'', status:'미확보', action:'트라넥삼산·장벽재생 관련 권위 논문 연결'},
+ {cat:'독자 특허 성분', ref:'멜라제로 V2™ (Melazero V2)', ours:'트라베란™ (우선후보)', status:'진행중', action:'ODM과 공동 특허 출원 협의'},
+ {cat:'R&D 투입 비용', ref:'8억 5천만원', ours:'', status:'미확보', action:'실제 기획·개발 투입 금액 스토리화'},
+ {cat:'침투 기술', ref:'시카 엑소좀 163nm (모공의 1/215)', ours:'', status:'미확보', action:'리포좀·나노캡슐화 기술명 확보'},
+ {cat:'임상 수치', ref:'속기미 139.04% 개선, 자극지수 0.00', ours:'겉기미 20.78% / 속기미 18.03% 목표', status:'계획중', action:'P&K 또는 휴먼피부임상 계약'},
+ {cat:'원산지 프리미엄', ref:'스위스 에델바이스 + 빙하수', ours:'연꽃꽃수 15% (계획)', status:'진행중', action:'연꽃꽃수 원산지 스토리 강화'},
+ {cat:'완판·재구매 스토리', ref:'6차 완판 + 재구매율 1위', ours:'', status:'런칭후', action:'런칭 후 3개월 데이터 확보'},
+ {cat:'환불 보장', ref:'100% 불만족 환불', ours:'', status:'미확보', action:'런칭 시 도입 검토'},
+ {cat:'이중 기능성', ref:'미백 + 주름개선', ours:'미백만', status:'미확보', action:'아데노신 0.04% 배합 검토'},
+ {cat:'비건/인증', ref:'없음', ours:'', status:'미확보', action:'수출용 비건 인증 검토'}
+];
+var writeupGaps = null;
+
+function getWriteupData(){
+ try{
+  const raw = localStorage.getItem('writeup_v1');
+  if(raw) return JSON.parse(raw);
+ }catch(e){}
+ return {refTitle:'', refText:'', oursTitle:'', oursText:'', gaps: DEF_WRITEUP_GAPS.map(g=>({...g}))};
+}
+function saveWriteup(){
+ const data = {
+  refTitle: (document.getElementById('writeup-ref-title')||{}).value || '',
+  refText: (document.getElementById('writeup-ref')||{}).value || '',
+  oursTitle: (document.getElementById('writeup-ours-title')||{}).value || '',
+  oursText: (document.getElementById('writeup-ours')||{}).value || '',
+  gaps: writeupGaps || DEF_WRITEUP_GAPS.map(g=>({...g}))
+ };
+ try{ localStorage.setItem('writeup_v1', JSON.stringify(data)); }catch(e){}
+}
+function loadWriteup(){
+ const d = getWriteupData();
+ const ref = document.getElementById('writeup-ref');
+ const refTitle = document.getElementById('writeup-ref-title');
+ const ours = document.getElementById('writeup-ours');
+ const oursTitle = document.getElementById('writeup-ours-title');
+ if(refTitle && !refTitle.value) refTitle.value = d.refTitle || '';
+ if(ref && !ref.value) ref.value = d.refText || '';
+ if(oursTitle && !oursTitle.value) oursTitle.value = d.oursTitle || '';
+ if(ours && !ours.value) ours.value = d.oursText || '';
+ writeupGaps = d.gaps && d.gaps.length ? d.gaps : DEF_WRITEUP_GAPS.map(g=>({...g}));
+}
+function resetWriteupRef(){
+ if(!confirm('레퍼런스 영역을 전체 삭제하시겠습니까?')) return;
+ const refTitle = document.getElementById('writeup-ref-title');
+ const ref = document.getElementById('writeup-ref');
+ if(refTitle) refTitle.value = '';
+ if(ref) ref.value = '';
+ saveWriteup();
+}
+function resetWriteupOurs(){
+ if(!confirm('우리 글 영역을 전체 삭제하시겠습니까?')) return;
+ const oursTitle = document.getElementById('writeup-ours-title');
+ const ours = document.getElementById('writeup-ours');
+ if(oursTitle) oursTitle.value = '';
+ if(ours) ours.value = '';
+ saveWriteup();
+}
+
+const WRITEUP_STATUS_OPTIONS = [
+ {v:'확보', c:'#2E7D32', b:'#E8F5E9'},
+ {v:'진행중', c:'#F57F17', b:'#FFF8E1'},
+ {v:'계획중', c:'#1565C0', b:'#E3F2FD'},
+ {v:'런칭후', c:'#6A1B9A', b:'#F3E5F5'},
+ {v:'미확보', c:'#C62828', b:'#FFEBEE'}
+];
+
+function renderWriteupGaps(){
+ const body = document.getElementById('writeup-gap-body');
+ if(!body) return;
+ if(!writeupGaps) loadWriteup();
+ if(!writeupGaps) writeupGaps = DEF_WRITEUP_GAPS.map(g=>({...g}));
+ body.innerHTML = writeupGaps.map(function(g,i){
+  const st = WRITEUP_STATUS_OPTIONS.find(function(o){return o.v===g.status;}) || WRITEUP_STATUS_OPTIONS[4];
+  const opts = WRITEUP_STATUS_OPTIONS.map(function(o){return '<option value="'+o.v+'"'+(o.v===g.status?' selected':'')+'>'+o.v+'</option>';}).join('');
+  return '<tr style="border-bottom:.5px solid var(--bd)">' +
+   '<td style="padding:5px 7px;vertical-align:top"><input value="'+(g.cat||'').replace(/"/g,'&quot;')+'" onchange="writeupGaps['+i+'].cat=this.value;saveWriteup()" style="width:100%;border:none;background:transparent;font-size:11px;outline:none;font-weight:500"></td>' +
+   '<td style="padding:5px 7px;vertical-align:top"><textarea onchange="writeupGaps['+i+'].ref=this.value;saveWriteup()" rows="2" style="width:100%;border:none;background:#E3F2FD30;font-size:11px;outline:none;resize:vertical;padding:3px;border-radius:3px;font-family:inherit">'+(g.ref||'').replace(/</g,'&lt;')+'</textarea></td>' +
+   '<td style="padding:5px 7px;vertical-align:top"><textarea onchange="writeupGaps['+i+'].ours=this.value;saveWriteup()" rows="2" style="width:100%;border:none;background:#E8F5E930;font-size:11px;outline:none;resize:vertical;padding:3px;border-radius:3px;font-family:inherit">'+(g.ours||'').replace(/</g,'&lt;')+'</textarea></td>' +
+   '<td style="padding:5px 4px;text-align:center;vertical-align:top"><select onchange="writeupGaps['+i+'].status=this.value;saveWriteup();renderWriteupGaps()" style="padding:3px 5px;border-radius:4px;font-size:10px;font-weight:600;border:1px solid '+st.c+';background:'+st.b+';color:'+st.c+';outline:none">'+opts+'</select></td>' +
+   '<td style="padding:5px 7px;vertical-align:top"><textarea onchange="writeupGaps['+i+'].action=this.value;saveWriteup()" rows="2" style="width:100%;border:none;background:transparent;font-size:10px;color:var(--mu);outline:none;resize:vertical;padding:3px;font-family:inherit">'+(g.action||'').replace(/</g,'&lt;')+'</textarea></td>' +
+   '<td style="padding:5px 4px;text-align:center;vertical-align:top"><button onclick="removeWriteupGap('+i+')" style="background:none;border:none;color:var(--hi);cursor:pointer;font-size:11px" title="삭제">✕</button></td>' +
+  '</tr>';
+ }).join('');
+ // 완성도 계산
+ const total = writeupGaps.length;
+ const secured = writeupGaps.filter(function(g){return g.status==='확보';}).length;
+ const pct = total ? Math.round(secured/total*100) : 0;
+ const ga = document.getElementById('writeup-gap-gauge');
+ if(ga) ga.textContent = secured+' / '+total+' 확보  ('+pct+'%)';
+}
+function addWriteupGap(){
+ if(!writeupGaps) loadWriteup();
+ writeupGaps.push({cat:'새 항목', ref:'', ours:'', status:'미확보', action:''});
+ saveWriteup(); renderWriteupGaps();
+}
+function removeWriteupGap(i){
+ if(!confirm('항목을 삭제하시겠습니까?')) return;
+ writeupGaps.splice(i,1);
+ saveWriteup(); renderWriteupGaps();
+}
+
 
 function renderUniqueness(){
  var wrap=document.getElementById('uniqueness-wrap');if(!wrap)return;
@@ -5333,7 +5641,13 @@ function load(){
  }
  try{
   if(raw){
-   const d=JSON.parse(raw);
+   let d=null;
+   try{d=JSON.parse(raw);}catch(parseErr){
+    console.warn('localStorage 데이터 파싱 실패 - 기본값 복원:',parseErr);
+    try{localStorage.removeItem(SK);}catch(e){}
+    raw=null;
+   }
+   if(d){
    allData=d.brands||[...DD_0,...DD_1,...DD_2,...DD_3];
    revData=d.reviews||[...DEF_REVIEWS];ideaData=d.idea||{...DEF_IDEA};
    mapPos=d.mapPos||{};mapCustomItems=d.mapCustomItems||[];
@@ -5421,7 +5735,9 @@ function load(){
    if(d.mechanismTitle)mechanismTitle=d.mechanismTitle;
    if(d.brandIdeaData&&Array.isArray(d.brandIdeaData)&&d.brandIdeaData.length)brandIdeaData=d.brandIdeaData;
    if(d.brandChecksData&&Array.isArray(d.brandChecksData)&&d.brandChecksData.length)brandChecksData=d.brandChecksData;
-  }else{
+   }
+  }
+  if(!raw){
    allData=[...DD_0,...DD_1,...DD_2,...DD_3];revData=[...DEF_REVIEWS];ideaData={...DEF_IDEA};
    mapPos={};mapCustomItems=[];costData=[...DEF_COSTS];expenseData=[];vendorData=[...DEF_VENDORS];
    mktPlan=JSON.parse(JSON.stringify(DEF_MKTPLAN));progressData={};
@@ -6872,6 +7188,7 @@ function showDLCat(cat,btn){
   <div class="subtab-nav">
     <button class="stab act" onclick="showP19Tab('principles',this)">📋 설득 원칙</button>
     <button class="stab" onclick="showP19Tab('uniqueness',this)">⚡ 특이점</button>
+    <button class="stab" onclick="showP19Tab('writeup',this)">✍️ 설명글 써보기</button>
   </div>
 
   <!-- 설득 원칙 탭 -->
@@ -6888,6 +7205,62 @@ function showDLCat(cat,btn){
         <span style="font-size:10px;color:var(--mu)">경쟁사와 다른 우리만의 차별점을 선택하고 메모하세요</span>
       </div>
       <div class="sec-body" id="uniqueness-wrap"></div>
+    </div>
+  </div>
+
+  <!-- 설명글 써보기 탭 -->
+  <div id="p19-writeup" style="padding:12px 18px;display:none">
+    <div class="section" style="margin-bottom:14px">
+      <div class="sec-head">
+        <h3>✍️ 설명글 써보기 — 레퍼런스 vs 우리</h3>
+        <div style="display:flex;gap:6px">
+          <button class="btn" onclick="resetWriteupRef()" style="background:rgba(244,67,54,.1);color:var(--red)">레퍼런스 전체삭제</button>
+          <button class="btn" onclick="resetWriteupOurs()" style="background:rgba(244,67,54,.1);color:var(--red)">우리 글 전체삭제</button>
+        </div>
+      </div>
+      <div class="sec-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <label style="font-size:11px;font-weight:600;color:#1565C0">📚 레퍼런스 설명</label>
+              <input id="writeup-ref-title" placeholder="레퍼런스 제목" style="flex:1;margin-left:8px;padding:4px 8px;border:1px solid var(--bd);border-radius:4px;font-size:11px;background:var(--bg);color:var(--tx);outline:none" oninput="saveWriteup()">
+            </div>
+            <textarea id="writeup-ref" rows="20" style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:6px;font-size:12px;font-family:var(--sa);line-height:1.7;background:#E3F2FD40;color:var(--tx);outline:none;resize:vertical;min-height:400px" placeholder="레퍼런스 브랜드의 설명글을 붙여넣으세요" oninput="saveWriteup()"></textarea>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <label style="font-size:11px;font-weight:600;color:#2E7D32">🎯 우리 설명</label>
+              <input id="writeup-ours-title" placeholder="우리 제목 (예: 배릭스 트라베란 크림)" style="flex:1;margin-left:8px;padding:4px 8px;border:1px solid var(--bd);border-radius:4px;font-size:11px;background:var(--bg);color:var(--tx);outline:none" oninput="saveWriteup()">
+            </div>
+            <textarea id="writeup-ours" rows="20" style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:6px;font-size:12px;font-family:var(--sa);line-height:1.7;background:#E8F5E940;color:var(--tx);outline:none;resize:vertical;min-height:400px" placeholder="레퍼런스 구조에 맞춰 우리 브랜드 설명글을 작성/붙여넣으세요" oninput="saveWriteup()"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" style="margin:0">
+      <div class="sec-head">
+        <h3>🔍 부족한 부분 체크리스트</h3>
+        <button class="btn" onclick="addWriteupGap()">+ 체크 항목 추가</button>
+      </div>
+      <div class="sec-body">
+        <table style="width:100%;border-collapse:collapse;font-size:11px" id="writeup-gap-table">
+          <thead><tr style="background:var(--bg);border-bottom:2px solid var(--bd)">
+            <th style="padding:7px 8px;text-align:left;width:140px">카테고리</th>
+            <th style="padding:7px 8px;text-align:left">레퍼런스 (있는 것)</th>
+            <th style="padding:7px 8px;text-align:left">우리 현황</th>
+            <th style="padding:7px 8px;text-align:center;width:90px">상태</th>
+            <th style="padding:7px 8px;text-align:left;width:160px">액션</th>
+            <th style="width:28px"></th>
+          </tr></thead>
+          <tbody id="writeup-gap-body"></tbody>
+          <tfoot><tr style="background:#E3F2FD;border-top:2px solid var(--bd);font-weight:600">
+            <td colspan="3" style="padding:7px 8px">완성도</td>
+            <td id="writeup-gap-gauge" style="padding:7px 8px;text-align:center;font-family:var(--mn);color:#1565C0">—</td>
+            <td colspan="2"></td>
+          </tr></tfoot>
+        </table>
+      </div>
     </div>
   </div>
 
