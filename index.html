@@ -458,6 +458,7 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
       <span class="save-indicator" id="save-indicator" style="font-size:10px;color:rgba(255,255,255,.5);white-space:nowrap">준비됨</span>
       <!-- Phase 3: 상단 제품 스위처 바 (상시 표시) -->
       <div id="product-switcher-bar" style="display:none;align-items:center;gap:6px;padding:3px 8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:5px;flex-wrap:wrap;margin-left:8px"></div>
+      <button onclick="showDiagnostic()" title="제품 분리 진단" style="background:rgba(255,255,255,.12);border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:11px;padding:2px 7px;border-radius:4px;line-height:1.4;margin-left:4px">🔍 진단</button>
     </div>
   </div>
   <div class="nav-tabs-wrap">
@@ -4159,10 +4160,21 @@ function activateProduct(id){
   applyBrandToUI && applyBrandToUI();
  }
 
- // ⑤ 전체 UI 재렌더
- if(typeof sv==='function')sv('제품 전환: '+product.name);
+ // ⑤ 전체 UI 재렌더 (sv() 호출은 생략 - 전환 시점엔 이미 saveCurrentProductToStore로 저장됨)
+ // 대신 hub_data_v1에만 수동 저장 (부작용 없이)
+ try {
+  const raw = localStorage.getItem('hub_data_v1');
+  if(raw){
+   const d = JSON.parse(raw);
+   d.activeProductId = activeProductId;
+   d.productsRegistry = productsRegistry;
+   localStorage.setItem('hub_data_v1', JSON.stringify(d));
+  }
+ } catch(e){}
+
  rerenderAllTabs();
  if(typeof renderProductSwitcher==='function')renderProductSwitcher();
+ if(typeof renderDiagnostic==='function')renderDiagnostic();
 
  if(typeof showToast==='function')showToast('🎯 '+product.name+' (으)로 전환됨','grn');
 }
@@ -9322,6 +9334,118 @@ function showDLCat(cat,btn){
  // 전역에 디버깅용으로도 노출
  window.bootPhase3 = bootPhase3;
 })();
+
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 🔍 제품 분리 진단 도구
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function showDiagnostic(){
+ let modal = document.getElementById('diagnostic-modal');
+ if(!modal){
+  modal = document.createElement('div');
+  modal.id = 'diagnostic-modal';
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = '<div style="background:#FFF;max-width:800px;width:90%;max-height:90vh;overflow-y:auto;border-radius:10px;padding:20px;font-family:inherit"><div id="diag-body"></div><div style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid #EEE"><button onclick="document.getElementById(\'diagnostic-modal\').remove()" style="padding:8px 16px;border:1px solid #CCC;background:#F5F5F5;border-radius:5px;cursor:pointer">닫기</button><button onclick="forceIsolationReset()" style="padding:8px 16px;border:none;background:#C62828;color:#FFF;border-radius:5px;cursor:pointer">⚠️ 강제 완전 리셋</button><button onclick="renderDiagnostic()" style="padding:8px 16px;border:none;background:#1565C0;color:#FFF;border-radius:5px;cursor:pointer">새로고침</button></div></div>';
+  document.body.appendChild(modal);
+ }
+ renderDiagnostic();
+}
+
+function renderDiagnostic(){
+ const body = document.getElementById('diag-body');
+ if(!body) return;
+ const N = n=>(n||0).toLocaleString('ko-KR');
+ const store = (typeof getProductStore==='function')?getProductStore():{};
+ const raw = localStorage.getItem('hub_data_v1');
+ const hubD = raw?JSON.parse(raw):{};
+ 
+ let h = '<div style="font-size:15px;font-weight:600;margin-bottom:12px">🔍 제품 분리 진단</div>';
+ 
+ // 현재 메모리 상태
+ h += '<div style="background:#E3F2FD;border-radius:8px;padding:12px;margin-bottom:10px;font-size:12px">';
+ h += '<div style="font-weight:600;margin-bottom:6px">📌 현재 메모리 상태 (화면에 보이는 데이터)</div>';
+ h += '<div>활성 제품 ID: <b>'+(activeProductId||'(없음)')+'</b></div>';
+ h += '<div>경쟁사(allData): <b>'+(typeof allData!=='undefined'?allData.length:'?')+'개</b></div>';
+ h += '<div>리뷰(revData): <b>'+(typeof revData!=='undefined'?revData.length:'?')+'개</b></div>';
+ h += '<div>준비비용(costData): <b>'+(typeof costData!=='undefined'?costData.length:'?')+'개</b></div>';
+ h += '<div>생산원가(cogsData): <b>'+(typeof cogsData!=='undefined'?cogsData.length:'?')+'개</b></div>';
+ h += '<div>페르소나(personaData): <b>'+(typeof personaData!=='undefined'?personaData.length:'?')+'개</b></div>';
+ h += '</div>';
+ 
+ // 제품 스토어 상태
+ h += '<div style="background:#F3E5F5;border-radius:8px;padding:12px;margin-bottom:10px;font-size:12px">';
+ h += '<div style="font-weight:600;margin-bottom:6px">💾 제품 스토어 (products_store_v1)</div>';
+ h += '<div>등록된 제품 수: <b>'+Object.keys(store).length+'</b></div>';
+ Object.keys(store).forEach(pid=>{
+  const s = store[pid] || {};
+  const prod = (typeof productsRegistry!=='undefined')?productsRegistry.find(p=>p.id===pid):null;
+  const name = prod?prod.name:pid;
+  const isActive = pid===activeProductId;
+  h += '<div style="padding:6px 10px;margin-top:6px;background:'+(isActive?'#E1F5FE':'#FFF')+';border:1px solid #CE93D8;border-radius:5px">';
+  h += '<div style="font-weight:600">'+(isActive?'🎯 ':'')+name+' <span style="font-size:10px;color:#888">('+pid+')</span></div>';
+  h += '<div style="font-size:11px;color:#555;margin-top:4px">';
+  h += 'allData: '+(Array.isArray(s.allData)?s.allData.length:'?')+'개 · ';
+  h += 'revData: '+(Array.isArray(s.revData)?s.revData.length:'?')+'개 · ';
+  h += 'costData: '+(Array.isArray(s.costData)?s.costData.length:'?')+'개 · ';
+  h += 'cogsData: '+(Array.isArray(s.cogsData)?s.cogsData.length:'?')+'개 · ';
+  h += 'personaData: '+(Array.isArray(s.personaData)?s.personaData.length:'?')+'개';
+  h += '</div></div>';
+ });
+ h += '</div>';
+ 
+ // hub_data_v1 상태
+ h += '<div style="background:#FFF8E1;border-radius:8px;padding:12px;margin-bottom:10px;font-size:12px">';
+ h += '<div style="font-weight:600;margin-bottom:6px">🗄 hub_data_v1 (전역 저장)</div>';
+ h += '<div>brands(allData): <b>'+(Array.isArray(hubD.brands)?hubD.brands.length:'?')+'개</b></div>';
+ h += '<div>activeProductId: <b>'+(hubD.activeProductId||'(없음)')+'</b></div>';
+ h += '<div>productsRegistry: <b>'+(Array.isArray(hubD.productsRegistry)?hubD.productsRegistry.length:'?')+'개</b></div>';
+ h += '</div>';
+
+ // 진단 결과
+ h += '<div style="background:#FFEBEE;border:1px solid #EF9A9A;border-radius:8px;padding:12px;font-size:12px">';
+ h += '<div style="font-weight:600;margin-bottom:6px;color:#C62828">🎯 진단 결과</div>';
+ const memAll = (typeof allData!=='undefined')?allData.length:0;
+ const storeAll = (store[activeProductId] && Array.isArray(store[activeProductId].allData))?store[activeProductId].allData.length:-1;
+ if(memAll === storeAll){
+  h += '<div style="color:#2E7D32">✅ 메모리와 스토어가 일치 (정상)</div>';
+ } else {
+  h += '<div style="color:#C62828">⚠️ 메모리('+memAll+')와 활성 제품 스토어('+storeAll+') 불일치!</div>';
+ }
+ // 두 제품 스토어 비교
+ const ids = Object.keys(store);
+ if(ids.length >= 2){
+  const a = store[ids[0]]||{};
+  const b = store[ids[1]]||{};
+  const aAll = Array.isArray(a.allData)?a.allData.length:0;
+  const bAll = Array.isArray(b.allData)?b.allData.length:0;
+  const aCost = Array.isArray(a.costData)?a.costData.length:0;
+  const bCost = Array.isArray(b.costData)?b.costData.length:0;
+  if(aAll === bAll && aCost === bCost && aAll > 0){
+   h += '<div style="color:#E65100;margin-top:4px">⚠️ 두 제품의 데이터가 동일 - 독립 저장 안 되고 있음</div>';
+  } else {
+   h += '<div style="color:#2E7D32;margin-top:4px">✅ 두 제품의 데이터가 다름 (격리 정상)</div>';
+  }
+ }
+ h += '</div>';
+ 
+ body.innerHTML = h;
+}
+
+function forceIsolationReset(){
+ if(!confirm('⚠️ 모든 localStorage를 지우고 완전 초기화합니다.\n\n현재 작업 데이터가 모두 삭제됩니다. 계속할까요?')){
+  return;
+ }
+ if(!confirm('정말로 모든 데이터를 지우시겠습니까? 이 작업은 되돌릴 수 없습니다.')){
+  return;
+ }
+ try {
+  localStorage.clear();
+  alert('초기화 완료. 페이지를 새로고침합니다.');
+  location.reload();
+ } catch(e) {
+  alert('초기화 실패: '+e.message);
+ }
+}
 </script>
 
 <!-- VENDOR MODAL -->
