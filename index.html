@@ -881,7 +881,10 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
     <button class="stab" onclick="showCostTab('adexp',this)">📢 지출-광고비</button>
     <button class="stab" onclick="showCostTab('allexp',this)">📋 지출-전체</button>
     <button class="stab" onclick="showCostTab('totalbudget',this)" style="border-left:2px solid var(--bd);padding-left:14px">💎 총 예산</button>
+    <button class="stab" onclick="showCostTab('cashflow',this)">📈 월별 현금흐름</button>
     <button class="stab" onclick="showCostTab('inventory',this)">📦 재고자산</button>
+    <button class="stab" onclick="showCostTab('scenario',this)">🎯 시나리오 비교</button>
+    <button class="stab" onclick="showCostTab('sensitivity',this)">📉 ROAS 감도 분석</button>
   </div>
   <div id="cost-tab-panel">
 <div style="padding:12px 18px">
@@ -1216,6 +1219,30 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
     <div class="sec-head"><h3>📦 재고자산 · Full Sellout Simulator</h3><span style="font-size:10px;color:var(--mu)">재고 전량 판매 시 최종 순이익을 재무제표 형식으로 시뮬레이션</span></div>
     <div class="sec-body" id="inventory-wrap">
       <div style="padding:20px;text-align:center;color:var(--hi);font-size:12px">재고자산 시뮬레이션을 로딩합니다...</div>
+    </div>
+  </div>
+</div>
+<div id="cashflow-tab-panel" style="display:none;padding:14px 18px">
+  <div class="section" style="margin:0">
+    <div class="sec-head"><h3>📈 월별 현금흐름 · Rolling Forecast</h3><span style="font-size:10px;color:var(--mu)">월별 판매 곡선 입력 → 현금 누적·손익분기점 자동 계산</span></div>
+    <div class="sec-body" id="cashflow-wrap">
+      <div style="padding:20px;text-align:center;color:var(--hi);font-size:12px">월별 현금흐름 시뮬레이션을 로딩합니다...</div>
+    </div>
+  </div>
+</div>
+<div id="scenario-tab-panel" style="display:none;padding:14px 18px">
+  <div class="section" style="margin:0">
+    <div class="sec-head"><h3>🎯 시나리오 비교 · 최악/기본/최선</h3><span style="font-size:10px;color:var(--mu)">판매량·ROAS·수수료·판관비를 변주하여 3가지 시나리오 병렬 비교</span></div>
+    <div class="sec-body" id="scenario-wrap">
+      <div style="padding:20px;text-align:center;color:var(--hi);font-size:12px">시나리오 비교를 로딩합니다...</div>
+    </div>
+  </div>
+</div>
+<div id="sensitivity-tab-panel" style="display:none;padding:14px 18px">
+  <div class="section" style="margin:0">
+    <div class="sec-head"><h3>📉 ROAS 감도 분석 · Break-even Analysis</h3><span style="font-size:10px;color:var(--mu)">목표 판매량 고정 시 ROAS에 따른 순이익 변화 · 손익분기 ROAS 자동 탐지</span></div>
+    <div class="sec-body" id="sensitivity-wrap">
+      <div style="padding:20px;text-align:center;color:var(--hi);font-size:12px">ROAS 감도 분석을 로딩합니다...</div>
     </div>
   </div>
 </div>
@@ -2256,7 +2283,11 @@ function sv(label){
    mechanismTitle:_g(typeof mechanismTitle!=='undefined'?mechanismTitle:null,''),
    brandIdeaData:_g(typeof brandIdeaData!=='undefined'?brandIdeaData:null,null),
    brandChecksData:_g(typeof brandChecksData!=='undefined'?brandChecksData:null,null),
-   inventoryData:_g(typeof inventoryData!=='undefined'?inventoryData:null,{})
+   inventoryData:_g(typeof inventoryData!=='undefined'?inventoryData:null,{}),
+   cashflowData:_g(typeof cashflowData!=='undefined'?cashflowData:null,{}),
+   scenarioData:_g(typeof scenarioData!=='undefined'?scenarioData:null,{}),
+   cashflowChartData:_g(typeof cashflowChartData!=='undefined'?cashflowChartData:null,{}),
+   sensitivityData:_g(typeof sensitivityData!=='undefined'?sensitivityData:null,{})
   };
   const snapStr=JSON.stringify(snap);
   // Try to save; if quota exceeded, strip heavy arrays and retry
@@ -2451,6 +2482,10 @@ function renderAllExpenses(){
 }
 
 let inventoryData={};
+let cashflowData={};
+let scenarioData={};
+let cashflowChartData={};
+let sensitivityData={};
 function renderTotalBudget(){
  const wrap=document.getElementById('totalbudget-wrap');if(!wrap)return;
  const N=n=>(n||0).toLocaleString('ko-KR');
@@ -2593,7 +2628,66 @@ function renderTotalBudget(){
   html2+='</div>';
  });
  html2+='</div>';
+
+ // ━━━ 💵 가용 현금 & 3개월 뒤 예상 현금 섹션 ━━━
+ const cf = (typeof cashflowData!=='undefined'&&cashflowData)?cashflowData:{};
+ const availableCash = cf.availableCash!==undefined?cf.availableCash:0;
+ const laborCost = cf.laborCost!==undefined?cf.laborCost:0;
+ const outsourceCost = cf.outsourceCost!==undefined?cf.outsourceCost:0;
+ const otherSGA = cf.otherSGA!==undefined?cf.otherSGA:0;
+ const totalOutflow = laborCost + outsourceCost + otherSGA + grandBudget;
+ const remainingCash = availableCash - totalOutflow;
+ const monthlyBurn = (laborCost+outsourceCost+otherSGA)/3;
+ const cashRunway = monthlyBurn>0?Math.floor(availableCash/monthlyBurn):0;
+
+ html2+='<div style="margin-top:20px;padding:14px;background:var(--bg);border:2px solid var(--bd);border-radius:10px">';
+ html2+='<div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:10px">💵 3개월 현금 흐름 시뮬레이션</div>';
+ html2+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">';
+ html2+=cfInp('💰 현재 가용 현금 (원)','availableCash',availableCash,'법인·개인 통장 합계');
+ html2+=cfInp('👥 3개월 인건비 (원)','laborCost',laborCost,'본인+직원 3개월 합계');
+ html2+=cfInp('🤝 3개월 외주 투자금 (원)','outsourceCost',outsourceCost,'디자인·영상·개발 외주');
+ html2+=cfInp('📋 기타 판관비 (원)','otherSGA',otherSGA,'사무실·통신·세무 등');
+ html2+='</div>';
+
+ html2+='<div style="background:var(--sur);border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin-top:4px">';
+ html2+='<table style="width:100%;border-collapse:collapse;font-size:12px">';
+ html2+='<tr style="border-bottom:.5px solid var(--bd);background:#E3F2FD"><td style="padding:7px 12px;font-weight:600">💰 현재 가용 현금</td><td style="padding:7px 12px;text-align:right;font-family:var(--mn);font-weight:600;color:#1565C0">'+N(availableCash)+'원</td></tr>';
+ html2+='<tr style="border-bottom:.5px solid var(--bd)"><td style="padding:5px 12px;color:var(--mu)">  ー 3개월 인건비</td><td style="padding:5px 12px;text-align:right;font-family:var(--mn);color:var(--red)">-'+N(laborCost)+'원</td></tr>';
+ html2+='<tr style="border-bottom:.5px solid var(--bd)"><td style="padding:5px 12px;color:var(--mu)">  ー 3개월 외주 투자금</td><td style="padding:5px 12px;text-align:right;font-family:var(--mn);color:var(--red)">-'+N(outsourceCost)+'원</td></tr>';
+ html2+='<tr style="border-bottom:.5px solid var(--bd)"><td style="padding:5px 12px;color:var(--mu)">  ー 기타 판관비</td><td style="padding:5px 12px;text-align:right;font-family:var(--mn);color:var(--red)">-'+N(otherSGA)+'원</td></tr>';
+ html2+='<tr style="border-bottom:.5px solid var(--bd)"><td style="padding:5px 12px;color:var(--mu)">  ー 총 런칭 예산 (준비+생산+광고)</td><td style="padding:5px 12px;text-align:right;font-family:var(--mn);color:var(--red)">-'+N(grandBudget)+'원</td></tr>';
+ const remainColor = remainingCash<0?'#C62828':(remainingCash<monthlyBurn?'#F57F17':'#2E7D32');
+ const remainBg = remainingCash<0?'#FFEBEE':(remainingCash<monthlyBurn?'#FFF8E1':'#E8F5E9');
+ html2+='<tr style="background:'+remainBg+'"><td style="padding:9px 12px;font-weight:700;color:'+remainColor+'">💵 3개월 뒤 가용 현금 (매출 제외)</td><td style="padding:9px 12px;text-align:right;font-family:var(--mn);font-weight:700;color:'+remainColor+';font-size:14px">'+N(remainingCash)+'원</td></tr>';
+ html2+='</table></div>';
+
+ if(availableCash>0){
+  html2+='<div style="margin-top:10px;padding:10px 12px;border-radius:6px;font-size:11px;line-height:1.7;'+(remainingCash<0?'background:#FFEBEE;border:1px solid #EF9A9A;color:#C62828':remainingCash<monthlyBurn?'background:#FFF8E1;border:1px solid #FFD54F;color:#E65100':'background:#E8F5E9;border:1px solid #A5D6A7;color:#2E7D32')+'">';
+  if(remainingCash<0){
+   html2+='<b>🚨 자금 부족:</b> 3개월 뒤 현금이 <b>'+N(Math.abs(remainingCash))+'원 부족</b>합니다. 외부 투자·매출 조기 발생 없이는 사업 지속이 어렵습니다. 예산 압축, 외주비 절감, 인건비 이연 검토가 필요합니다.';
+  } else if(remainingCash<monthlyBurn){
+   html2+='<b>⚠️ 런웨이 경고:</b> 3개월 뒤 잔고 '+N(remainingCash)+'원은 추가 1개월 운영도 어렵습니다. 매출이 예상보다 늦어지면 위험합니다. <b>예비 자금 3개월분 확보</b> 권장.';
+  } else {
+   const runway=cashRunway>0?cashRunway+'개월':'(운영비 미설정)';
+   html2+='<b>✅ 안정적 런웨이:</b> 3개월 뒤에도 '+N(remainingCash)+'원 여유. 현재 고정비 기준 <b>총 '+runway+'</b> 운영 가능.';
+  }
+  html2+='</div>';
+ }
+ html2+='</div>';
+ function cfInp(label,key,val,hint){
+  return '<div><label style="font-size:10px;color:var(--mu);display:block;margin-bottom:3px">'+label+'</label>'+
+   '<input type="number" value="'+val+'" onchange="updateCashflow(\''+key+'\',this.value)" style="width:100%;padding:5px 8px;border:1px solid var(--bd);border-radius:5px;font-size:12px;font-family:var(--mn);background:var(--sur);color:var(--tx);outline:none">'+
+   '<div style="font-size:9px;color:var(--mu);margin-top:2px">'+hint+'</div></div>';
+ }
+
  wrap.innerHTML=html2;
+}
+function updateCashflow(key,val){
+ if(typeof cashflowData==='undefined')window.cashflowData={};
+ const num=parseFloat(val);
+ cashflowData[key]=isNaN(num)?0:num;
+ if(typeof sv==='function')sv('현금흐름 입력');
+ if(typeof renderTotalBudget==='function')renderTotalBudget();
 }
 
 // ━━━━━ 📦 재고자산 · Full Sellout Simulator (t5 서브탭) ━━━━━
@@ -2603,7 +2697,7 @@ function renderInventory(){
  const inv = (typeof inventoryData!=='undefined'&&inventoryData)?inventoryData:{};
 
  // ━━━ 기본값 자동 연동 ━━━
- // 1) 재고 수량: cogsData의 "충진" 또는 "완제품" 행의 prodQty 우선 → 없으면 최대값
+ // 1) 재고 수량: cogsData의 "충진" 또는 "완제품" 행의 prodQty 우선
  let autoStock=0;
  if(typeof cogsData!=='undefined' && Array.isArray(cogsData) && cogsData.length){
   const fillRow=cogsData.find(r=>/(충진|완제품|완성|final|fill)/i.test(r.name||''));
@@ -2623,157 +2717,171 @@ function renderInventory(){
  }
 
  // ━━━ 사용자 입력값 (저장된 값 우선) ━━━
- const stock = (inv.stock!==undefined)?inv.stock:autoStock;
+ const stock = (inv.stock!==undefined)?inv.stock:autoStock;         // 총 재고
+ const targetQty = (inv.targetQty!==undefined)?inv.targetQty:Math.min(autoStock, Math.round(autoStock*0.5)); // 3개월 목표 (기본 재고의 50%)
  const price = (inv.price!==undefined)?inv.price:autoPrice;
- const channelFee = (inv.channelFee!==undefined)?inv.channelFee:10.8; // %
- const pgFee = (inv.pgFee!==undefined)?inv.pgFee:2.9; // %
- const shipPerUnit = (inv.shipPerUnit!==undefined)?inv.shipPerUnit:3000; // 원/건
- const targetROAS = (inv.targetROAS!==undefined)?inv.targetROAS:300; // %
- const opexPerUnit = (inv.opexPerUnit!==undefined)?inv.opexPerUnit:0; // 원/건 기타 판관비
- const opexTotal = (inv.opexTotal!==undefined)?inv.opexTotal:0; // 원 일괄 판관비
- const corpTaxRate = (inv.corpTaxRate!==undefined)?inv.corpTaxRate:9; // % (2억 이하 9%)
+ const channelFee = (inv.channelFee!==undefined)?inv.channelFee:10.8;
+ const pgFee = (inv.pgFee!==undefined)?inv.pgFee:2.9;
+ const shipPerUnit = (inv.shipPerUnit!==undefined)?inv.shipPerUnit:3000;
+ const targetROAS = (inv.targetROAS!==undefined)?inv.targetROAS:300;
+ const opexPerUnit = (inv.opexPerUnit!==undefined)?inv.opexPerUnit:0;
+ const opexTotal = (inv.opexTotal!==undefined)?inv.opexTotal:0;
+ const corpTaxRate = (inv.corpTaxRate!==undefined)?inv.corpTaxRate:9;
 
- // ━━━ 단계별 계산 (Top-Down Waterfall) ━━━
- const grossRevenue = stock * price;                              // ① 예상 매출
- const channelFeeAmt = Math.round(grossRevenue * channelFee/100); // 채널 수수료
- const pgFeeAmt = Math.round(grossRevenue * pgFee/100);           // 결제 수수료
- const shipTotal = stock * shipPerUnit;                           // 택배비
- const netRevenue = grossRevenue - channelFeeAmt - pgFeeAmt - shipTotal; // ② 순매출
+ // ━━━ 3개월 목표 판매 수량 기준 계산 ━━━
+ const saleQty = Math.min(targetQty, stock); // 목표가 재고 초과 방지
+ const remainQty = Math.max(0, stock - saleQty); // 잔여 재고
 
- const cogsTotal = stock * unitCost;                              // 생산 원가
- const grossProfit = netRevenue - cogsTotal;                       // ③ 매출총이익
+ const grossRevenue = saleQty * price;
+ const channelFeeAmt = Math.round(grossRevenue * channelFee/100);
+ const pgFeeAmt = Math.round(grossRevenue * pgFee/100);
+ const shipTotal = saleQty * shipPerUnit;
+ const netRevenue = grossRevenue - channelFeeAmt - pgFeeAmt - shipTotal;
+
+ const cogsTotal = saleQty * unitCost;
+ const grossProfit = netRevenue - cogsTotal;
  const grossMargin = grossRevenue?Math.round(grossProfit/grossRevenue*1000)/10:0;
 
- // 광고비 (ROAS 역산: 광고비 = 매출 / ROAS × 100)
+ // 광고비 (ROAS 역산)
  const adSpend = targetROAS?Math.round(grossRevenue/targetROAS*100):0;
- const opexCalcTotal = stock * opexPerUnit + opexTotal;            // 기타 판관비 합
- const operatingProfit = grossProfit - adSpend - opexCalcTotal;    // ④ 영업이익
+ const opexCalcTotal = saleQty * opexPerUnit + opexTotal;
+ const operatingProfit = grossProfit - adSpend - opexCalcTotal;
  const operatingMargin = grossRevenue?Math.round(operatingProfit/grossRevenue*1000)/10:0;
 
- // 세금 (간이 계산)
- // 매입VAT: 원가·광고비·판관비에 숨어있는 VAT 환급 가능분 추정 (10/11)
- const inputVAT = Math.round((cogsTotal + adSpend + opexCalcTotal) / 11);
- const outputVAT = Math.round(grossRevenue / 11); // 매출 VAT (매출의 1/11)
+ // ━━━ 부가세: 메타 광고비·협찬·기타 광고비는 VAT 공제 제외 ━━━
+ // 매입VAT 공제 가능: 생산원가 + 판관비
+ // 매입VAT 공제 불가: 메타·구글·인스타 광고비, 협찬비, 기타 무세금계산서 비용
+ // (광고비 전체를 공제불가로 처리 - 보수적 기준. 세금계산서 발행 채널은 사용자가 별도 조정 가능)
+ const vatDeductibleExpense = cogsTotal + opexCalcTotal;  // 세금계산서 발행 가능한 비용
+ const vatNonDeductibleExpense = adSpend;                  // 해외 광고·협찬 (공제 불가)
+ const inputVAT = Math.round(vatDeductibleExpense / 11);
+ const outputVAT = Math.round(grossRevenue / 11);
  const vatPayable = Math.max(0, outputVAT - inputVAT);
- // 법인세: 영업이익 기준 (음수면 0)
+
+ // 법인세
  const corpTax = Math.max(0, Math.round(operatingProfit * corpTaxRate/100));
- const netProfit = operatingProfit - vatPayable - corpTax;         // ⑤ 순이익
+ const netProfit = operatingProfit - vatPayable - corpTax;
  const netMargin = grossRevenue?Math.round(netProfit/grossRevenue*1000)/10:0;
 
- // 손익분기점: 판매가 유지할 때 영업이익 0 되는 최소 수량
- // (판매가 - 채널·결제수수료·택배비 - 원가 - 광고비/개 - 판관비/개) 를 초과해야 함
- const perUnitNet = price - Math.round(price*(channelFee+pgFee)/100) - shipPerUnit - unitCost - opexPerUnit;
- const adPerUnit = targetROAS?Math.round(price/targetROAS*100):0;
- const contribPerUnit = perUnitNet - adPerUnit;
- const fixedCostForBE = opexTotal; // 고정비만
- const breakEvenQty = contribPerUnit>0 ? Math.ceil(fixedCostForBE/contribPerUnit) : 0;
+ // 잔여 재고자산 가치
+ const remainStockValue = remainQty * unitCost; // 장부가 (원가 기준)
+ const remainPotentialRevenue = remainQty * price; // 잠재 매출
 
  // ━━━ UI 렌더링 ━━━
- const CLR={blue:'#1565C0',green:'#2E7D32',amber:'#F57F17',red:'#C62828',purple:'#6A1B9A'};
+ const CLR={blue:'#1565C0',green:'#2E7D32',amber:'#F57F17',red:'#C62828',purple:'#6A1B9A',gray:'#546E7A'};
  let h='';
 
  // ━━━ 입력 패널 ━━━
  h+='<div style="background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:16px">';
  h+='<div style="font-size:12px;font-weight:600;color:var(--tx);margin-bottom:10px">⚙️ 입력값 · 자동 연동 포함</div>';
  h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px">';
- h+=inpCell('재고 수량 (개)','stock',stock,'생산 탭 "충진" 자동');
+ h+=inpCell('총 재고 수량 (개)','stock',stock,'생산 탭 "충진" 자동',CLR.blue);
+ h+=inpCell('3개월 목표 판매 (개)','targetQty',targetQty,'재무계산 기준 수량',CLR.green);
  h+=inpCell('판매가 (원)','price',price,'ROAS 탭 판매가 자동');
  h+=inpCell('채널 수수료 (%)','channelFee',channelFee,'쿠팡 10.8 · NSS 3.74');
- h+=inpCell('결제 수수료 (%)','pgFee',pgFee,'PG 일반 2.9');
  h+='</div>';
  h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px">';
+ h+=inpCell('결제 수수료 (%)','pgFee',pgFee,'PG 일반 2.9');
  h+=inpCell('택배비 (원/건)','shipPerUnit',shipPerUnit,'편의점·우체국');
  h+=inpCell('목표 ROAS (%)','targetROAS',targetROAS,'광고비 = 매출/ROAS×100');
  h+=inpCell('개당 판관비 (원)','opexPerUnit',opexPerUnit,'포장재·부자재');
- h+=inpCell('고정 판관비 (원)','opexTotal',opexTotal,'인건비·서버 등');
  h+='</div>';
- h+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">';
- h+=inpCell('법인세율 (%)','corpTaxRate',corpTaxRate,'2억 이하 9 / 2억 초과 19');
+ h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">';
+ h+=inpCell('고정 판관비 (원)','opexTotal',opexTotal,'인건비·서버 등');
+ h+=inpCell('법인세율 (%)','corpTaxRate',corpTaxRate,'2억 이하 9 / 초과 19');
  h+='<div style="display:flex;align-items:flex-end;gap:6px">';
- h+='<button class="btn pri" onclick="autoFillInventoryFromCogs()" style="flex:1">🔄 생산탭 자동 연동</button>';
+ h+='<button class="btn pri" onclick="autoFillInventoryFromCogs()" style="flex:1">🔄 생산·ROAS탭 재연동</button>';
  h+='<button class="btn" onclick="resetInventory()" title="초기값 복원">↺</button>';
  h+='</div>';
  h+='</div></div>';
 
- // ━━━ 요약 KPI 카드 4개 ━━━
+ // ━━━ 재고 현황 (3-card) ━━━
+ h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">';
+ h+='<div style="background:#E3F2FD;border:1px solid #90CAF9;border-left:4px solid '+CLR.blue+';border-radius:10px;padding:12px">';
+ h+='<div style="font-size:10px;color:'+CLR.blue+';margin-bottom:4px;font-weight:500">📦 총 재고 수량</div>';
+ h+='<div style="font-size:22px;font-weight:700;font-family:var(--mn);color:'+CLR.blue+'">'+N(stock)+'<span style="font-size:12px;font-weight:500">개</span></div>';
+ h+='<div style="font-size:9px;color:var(--mu);margin-top:3px">원가 기준 '+N(stock*unitCost)+'원</div></div>';
+ h+='<div style="background:#E8F5E9;border:1px solid #81C784;border-left:4px solid '+CLR.green+';border-radius:10px;padding:12px">';
+ h+='<div style="font-size:10px;color:'+CLR.green+';margin-bottom:4px;font-weight:500">🎯 3개월 목표 판매</div>';
+ h+='<div style="font-size:22px;font-weight:700;font-family:var(--mn);color:'+CLR.green+'">'+N(saleQty)+'<span style="font-size:12px;font-weight:500">개</span></div>';
+ h+='<div style="font-size:9px;color:var(--mu);margin-top:3px">재고의 '+(stock?Math.round(saleQty/stock*100):0)+'% · 월 '+N(Math.round(saleQty/3))+'개 판매 필요</div></div>';
+ h+='<div style="background:#FFF8E1;border:1px solid #FFB300;border-left:4px solid '+CLR.amber+';border-radius:10px;padding:12px">';
+ h+='<div style="font-size:10px;color:'+CLR.amber+';margin-bottom:4px;font-weight:500">📥 잔여 재고자산 (3개월 후)</div>';
+ h+='<div style="font-size:22px;font-weight:700;font-family:var(--mn);color:'+CLR.amber+'">'+N(remainQty)+'<span style="font-size:12px;font-weight:500">개</span></div>';
+ h+='<div style="font-size:9px;color:var(--mu);margin-top:3px">원가 '+N(remainStockValue)+'원 / 잠재매출 '+N(remainPotentialRevenue)+'원</div></div>';
+ h+='</div>';
+
+ // ━━━ 요약 KPI 카드 4개 (목표 수량 기준) ━━━
+ h+='<div style="background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:10px 14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">';
+ h+='<div style="font-size:11px;color:var(--tx)"><b>📊 3개월 목표 판매 ('+N(saleQty)+'개) 기준 재무 시뮬레이션</b> <span style="color:var(--mu)">※ 잔여 재고는 별도 자산으로 유지됨</span></div>';
+ h+='</div>';
  h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">';
- h+=kpiCard('💰 예상 매출', N(grossRevenue)+'원', CLR.blue, '#E3F2FD', stock+'개 × '+N(price)+'원');
+ h+=kpiCard('💰 예상 매출', N(grossRevenue)+'원', CLR.blue, '#E3F2FD', N(saleQty)+'개 × '+N(price)+'원');
  h+=kpiCard('💎 매출총이익', N(grossProfit)+'원', grossProfit>=0?CLR.green:CLR.red, '#E8F5E9', '마진율 '+grossMargin+'%');
  h+=kpiCard('🏆 영업이익', N(operatingProfit)+'원', operatingProfit>=0?CLR.amber:CLR.red, '#FFF8E1', '마진율 '+operatingMargin+'%');
  h+=kpiCard('💵 순이익', N(netProfit)+'원', netProfit>=0?CLR.purple:CLR.red, '#F3E5F5', '마진율 '+netMargin+'%');
  h+='</div>';
 
- // ━━━ 재무제표 폭포 (Waterfall) ━━━
+ // ━━━ 재무제표 폭포 ━━━
  h+='<div style="background:var(--sur);border:1px solid var(--bd);border-radius:10px;overflow:hidden;margin-bottom:16px">';
- h+='<div style="padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--bd);font-size:12px;font-weight:600">📋 손익 폭포 · Income Waterfall</div>';
+ h+='<div style="padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--bd);font-size:12px;font-weight:600">📋 손익 폭포 · Income Waterfall (3개월 목표 '+N(saleQty)+'개 판매 기준)</div>';
  h+='<table style="width:100%;border-collapse:collapse;font-size:12px">';
  h+='<thead><tr style="background:var(--bg);border-bottom:1px solid var(--bd);color:var(--mu);font-size:10px"><th style="padding:6px 12px;text-align:left">단계</th><th style="padding:6px 12px;text-align:right">금액</th><th style="padding:6px 12px;text-align:right;width:80px">비율</th><th style="padding:6px 12px;text-align:left;color:var(--mu)">계산</th></tr></thead>';
  h+='<tbody>';
- // 1단계 매출
- h+=wrow('💰 예상 매출 (Gross Revenue)',grossRevenue,grossRevenue,CLR.blue,'재고 '+N(stock)+'개 × 판매가 '+N(price)+'원',true);
- // 차감
+ h+=wrow('💰 예상 매출 (Gross Revenue)',grossRevenue,grossRevenue,CLR.blue,'목표 '+N(saleQty)+'개 × '+N(price)+'원',true);
  h+=wrow('  ー 채널 수수료 ('+channelFee+'%)',-channelFeeAmt,grossRevenue,CLR.red,'매출 × '+channelFee+'%');
  h+=wrow('  ー 결제 수수료 ('+pgFee+'%)',-pgFeeAmt,grossRevenue,CLR.red,'매출 × '+pgFee+'%');
- h+=wrow('  ー 택배비','-'+N(shipTotal),grossRevenue,CLR.red,N(stock)+'개 × '+N(shipPerUnit)+'원',false,-shipTotal);
- // 2단계 순매출
+ h+=wrow('  ー 택배비',-shipTotal,grossRevenue,CLR.red,N(saleQty)+'개 × '+N(shipPerUnit)+'원');
  h+=wrow('📦 순매출 (Net Revenue)',netRevenue,grossRevenue,CLR.blue,'매출 − 수수료 − 택배',true);
- // 원가 차감
- h+=wrow('  ー 생산 원가 (COGS, VAT포함)',-cogsTotal,grossRevenue,CLR.red,N(stock)+'개 × '+N(unitCost)+'원');
- // 3단계 매출총이익
+ h+=wrow('  ー 생산 원가 (COGS, VAT포함)',-cogsTotal,grossRevenue,CLR.red,N(saleQty)+'개 × '+N(unitCost)+'원');
  h+=wrow('💎 매출총이익 (Gross Profit)',grossProfit,grossRevenue,grossProfit>=0?CLR.green:CLR.red,'마진율 '+grossMargin+'%',true);
- // 광고·판관
- h+=wrow('  ー 광고비 (ROAS '+targetROAS+'%)',-adSpend,grossRevenue,CLR.red,'매출 ÷ ROAS × 100');
- h+=wrow('  ー 기타 판관비',-opexCalcTotal,grossRevenue,CLR.red,(opexPerUnit?N(stock)+'개×'+N(opexPerUnit)+'원':'')+(opexPerUnit&&opexTotal?' + ':'')+(opexTotal?'고정 '+N(opexTotal)+'원':''));
- // 4단계 영업이익
+ h+=wrow('  ー 광고비 (ROAS '+targetROAS+'%)',-adSpend,grossRevenue,CLR.red,'매출 ÷ ROAS × 100 · <span style="color:'+CLR.amber+'">VAT공제불가</span>');
+ h+=wrow('  ー 기타 판관비',-opexCalcTotal,grossRevenue,CLR.red,(opexPerUnit?N(saleQty)+'개×'+N(opexPerUnit)+'원':'')+(opexPerUnit&&opexTotal?' + ':'')+(opexTotal?'고정 '+N(opexTotal)+'원':(opexPerUnit?'':'0원')));
  h+=wrow('🏆 영업이익 (Operating Profit)',operatingProfit,grossRevenue,operatingProfit>=0?CLR.amber:CLR.red,'마진율 '+operatingMargin+'%',true);
- // 세금
- h+=wrow('  ー 부가세 (VAT 납부)',-vatPayable,grossRevenue,CLR.red,'매출VAT '+N(outputVAT)+' − 매입VAT '+N(inputVAT));
+ h+=wrow('  ー 부가세 (VAT 납부)',-vatPayable,grossRevenue,CLR.red,'매출VAT '+N(outputVAT)+' − 매입VAT '+N(inputVAT)+' (광고 제외)');
  h+=wrow('  ー 법인세 ('+corpTaxRate+'%)',-corpTax,grossRevenue,CLR.red,'영업이익 × '+corpTaxRate+'%');
- // 5단계 순이익
  h+=wrow('💵 순이익 (Net Profit)',netProfit,grossRevenue,netProfit>=0?CLR.purple:CLR.red,'마진율 '+netMargin+'%',true);
  h+='</tbody></table></div>';
 
+ // ━━━ VAT 공제 주의 ━━━
+ h+='<div style="background:#FFF3E0;border:1px solid #FFB74D;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:11px;line-height:1.7">';
+ h+='<div style="font-weight:600;color:#E65100;margin-bottom:4px">⚠️ 부가세 매입 공제 제외 항목</div>';
+ h+='<div style="color:var(--tx)">메타·구글·틱톡 해외 광고비, 협찬비, 세금계산서 미발행 지출은 <b>매입세액 공제가 되지 않습니다.</b> 본 시뮬레이션에서는 광고비 전체('+N(adSpend)+'원)를 공제 불가로 처리했습니다. 네이버·카카오 국내 광고는 세금계산서 발행이 가능하므로 실제로는 일부 환급 가능합니다.</div>';
+ h+='</div>';
+
  // ━━━ 핵심 인사이트 ━━━
  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
- // 좌: 핵심 숫자
  h+='<div style="background:#E3F2FD;border:1px solid #90CAF9;border-left:4px solid '+CLR.blue+';border-radius:8px;padding:12px">';
- h+='<div style="font-size:11px;font-weight:600;color:'+CLR.blue+';margin-bottom:8px">🎯 핵심 질문에 답하기</div>';
+ h+='<div style="font-size:11px;font-weight:600;color:'+CLR.blue+';margin-bottom:8px">🎯 3개월 시뮬레이션 결과</div>';
  h+='<div style="font-size:11px;line-height:1.8;color:var(--tx)">';
- h+='<b>Q. 재고를 다 팔면 최종 얼마 버나?</b><br>';
+ h+='<b>Q. 3개월간 '+N(saleQty)+'개 팔면 최종 얼마 벌까?</b><br>';
  h+='→ <b style="color:'+(netProfit>=0?CLR.green:CLR.red)+';font-family:var(--mn);font-size:13px">'+N(netProfit)+'원</b> (순이익률 '+netMargin+'%)<br><br>';
- h+='<b>Q. 이 재고를 다 팔려면 광고비가 얼마 필요?</b><br>';
- h+='→ <b style="font-family:var(--mn);font-size:13px">'+N(adSpend)+'원</b> (ROAS '+targetROAS+'% 기준)<br><br>';
- h+='<b>Q. 총 수수료는?</b><br>';
- h+='→ <b style="font-family:var(--mn)">'+N(channelFeeAmt+pgFeeAmt)+'원</b> (채널+결제)<br><br>';
- h+='<b>Q. 단위당 실질 이익?</b><br>';
- h+='→ <b style="font-family:var(--mn)">'+N(stock?Math.round(netProfit/stock):0)+'원/개</b>';
+ h+='<b>Q. 이 수량 팔려면 광고비 얼마?</b><br>';
+ h+='→ <b style="font-family:var(--mn);font-size:13px">'+N(adSpend)+'원</b> (ROAS '+targetROAS+'%)<br><br>';
+ h+='<b>Q. 월 필요 판매량?</b><br>';
+ h+='→ <b style="font-family:var(--mn);font-size:13px">'+N(Math.round(saleQty/3))+'개/월</b>';
  h+='</div></div>';
- // 우: 수익 구조 분석
  h+='<div style="background:#FFF8E1;border:1px solid #FFD54F;border-left:4px solid '+CLR.amber+';border-radius:8px;padding:12px">';
- h+='<div style="font-size:11px;font-weight:600;color:'+CLR.amber+';margin-bottom:8px">📊 수익 구조 분석</div>';
+ h+='<div style="font-size:11px;font-weight:600;color:'+CLR.amber+';margin-bottom:8px">📥 잔여 재고자산</div>';
  h+='<div style="font-size:11px;line-height:1.8">';
- const pct=(v)=>grossRevenue?((v/grossRevenue)*100).toFixed(1):0;
- h+='<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:.5px dashed var(--bd)"><span>채널+결제 수수료</span><b style="font-family:var(--mn);color:'+CLR.red+'">'+pct(channelFeeAmt+pgFeeAmt)+'%</b></div>';
- h+='<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:.5px dashed var(--bd)"><span>택배비</span><b style="font-family:var(--mn);color:'+CLR.red+'">'+pct(shipTotal)+'%</b></div>';
- h+='<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:.5px dashed var(--bd)"><span>생산원가</span><b style="font-family:var(--mn);color:'+CLR.red+'">'+pct(cogsTotal)+'%</b></div>';
- h+='<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:.5px dashed var(--bd)"><span>광고비</span><b style="font-family:var(--mn);color:'+CLR.red+'">'+pct(adSpend)+'%</b></div>';
- h+='<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:.5px dashed var(--bd)"><span>판관비</span><b style="font-family:var(--mn);color:'+CLR.red+'">'+pct(opexCalcTotal)+'%</b></div>';
- h+='<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:.5px dashed var(--bd)"><span>세금</span><b style="font-family:var(--mn);color:'+CLR.red+'">'+pct(vatPayable+corpTax)+'%</b></div>';
- h+='<div style="display:flex;justify-content:space-between;padding:5px 0;margin-top:4px;border-top:2px solid var(--bd)"><span style="font-weight:600">최종 순이익률</span><b style="font-family:var(--mn);color:'+(netProfit>=0?CLR.green:CLR.red)+';font-size:13px">'+netMargin+'%</b></div>';
+ h+='<b>3개월 후 남는 재고:</b> '+N(remainQty)+'개<br>';
+ h+='<b>장부가(원가 기준):</b> '+N(remainStockValue)+'원<br>';
+ h+='<b>잠재 매출:</b> '+N(remainPotentialRevenue)+'원<br><br>';
+ h+='<div style="font-size:10px;color:var(--mu);padding-top:6px;border-top:1px dashed var(--bd)">잔여 재고는 <b>재무상태표 자산</b>으로 유지. 다음 분기 판매 시 추가 이익 확보 가능.</div>';
  h+='</div></div>';
  h+='</div>';
 
- // ━━━ 교육적 경고 문구 ━━━
  h+='<div style="margin-top:14px;padding:10px 12px;background:#F5F5F5;border-radius:6px;font-size:10px;color:var(--mu);line-height:1.6">';
- h+='⚠️ <b>주의:</b> 위 계산은 시뮬레이션입니다. 실제 부가세는 매입세액 상세 증빙에 따라 차이가 크며, 법인세는 공제 항목(R&D·고용·투자세액공제 등)에 따라 다릅니다. 재고 100% 판매 가정이므로 실무에서는 판매 속도·재고 회전·할인 전환율도 반영해야 합니다.';
+ h+='⚠️ <b>주의:</b> 위 계산은 시뮬레이션입니다. 실제 부가세는 매입세액 상세 증빙에 따라 차이가 크며(네이버·카카오 광고는 환급 가능), 법인세는 공제 항목(R&D·고용·투자세액공제)에 따라 다릅니다.';
  h+='</div>';
 
  wrap.innerHTML=h;
 
- // 헬퍼 함수
- function inpCell(label,key,val,hint){
+ // 헬퍼
+ function inpCell(label,key,val,hint,borderColor){
+  const borderStyle=borderColor?'border:2px solid '+borderColor+';':'border:1px solid var(--bd);';
   return '<div><label style="font-size:10px;color:var(--mu);display:block;margin-bottom:3px">'+label+'</label>'+
-   '<input type="number" value="'+val+'" onchange="updateInventory(\''+key+'\',this.value)" style="width:100%;padding:5px 8px;border:1px solid var(--bd);border-radius:5px;font-size:12px;font-family:var(--mn);background:var(--sur);color:var(--tx);outline:none">'+
+   '<input type="number" value="'+val+'" onchange="updateInventory(\''+key+'\',this.value)" style="width:100%;padding:5px 8px;'+borderStyle+'border-radius:5px;font-size:12px;font-family:var(--mn);background:var(--sur);color:var(--tx);outline:none">'+
    '<div style="font-size:9px;color:var(--mu);margin-top:2px">'+hint+'</div></div>';
  }
  function kpiCard(label,value,color,bg,sub){
@@ -2782,12 +2890,12 @@ function renderInventory(){
    '<div style="font-size:18px;font-weight:700;font-family:var(--mn);color:'+color+';line-height:1.2">'+value+'</div>'+
    '<div style="font-size:9px;color:var(--mu);margin-top:3px">'+sub+'</div></div>';
  }
- function wrow(label,val,base,color,memo,bold,rawVal){
-  const valN = (typeof val==='number')?val:parseInt(String(val).replace(/[^\-0-9]/g,''))||0;
-  const pct = base?((Math.abs(valN)/base)*100).toFixed(1):0;
-  const fmt = (typeof val==='string')?val:(val<0?'-':'')+N(Math.abs(val))+'원';
-  const weight = bold?'600':'400';
-  const bg = bold?'background:'+color+'10;':'';
+ function wrow(label,val,base,color,memo,bold){
+  const valN=(typeof val==='number')?val:0;
+  const pct=base?((Math.abs(valN)/base)*100).toFixed(1):0;
+  const fmt=(val<0?'-':'')+N(Math.abs(val))+'원';
+  const weight=bold?'600':'400';
+  const bg=bold?'background:'+color+'10;':'';
   return '<tr style="border-bottom:.5px solid var(--bd);'+bg+'">'+
    '<td style="padding:6px 12px;font-weight:'+weight+';color:'+(bold?color:'var(--tx)')+'">'+label+'</td>'+
    '<td style="padding:6px 12px;text-align:right;font-family:var(--mn);font-weight:'+weight+';color:'+color+'">'+fmt+'</td>'+
@@ -2795,6 +2903,7 @@ function renderInventory(){
    '<td style="padding:6px 12px;font-size:10px;color:var(--mu)">'+memo+'</td></tr>';
  }
 }
+
 
 function updateInventory(key,val){
  if(typeof inventoryData==='undefined')window.inventoryData={};
@@ -2821,6 +2930,632 @@ function resetInventory(){
  renderInventory();
  if(typeof showToast==='function')showToast('↺ 재고자산 초기화','grn');
 }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 🧮 공통 재무 계산 헬퍼
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function calcFinance(params){
+ // params: {qty, price, unitCost, channelFee, pgFee, shipPerUnit, adROAS, opexPerUnit, opexTotal, corpTaxRate}
+ const p = Object.assign({
+  qty:0, price:0, unitCost:0, channelFee:10.8, pgFee:2.9, shipPerUnit:3000,
+  adROAS:300, opexPerUnit:0, opexTotal:0, corpTaxRate:9
+ }, params);
+
+ const grossRevenue = p.qty * p.price;
+ const channelFeeAmt = Math.round(grossRevenue * p.channelFee/100);
+ const pgFeeAmt = Math.round(grossRevenue * p.pgFee/100);
+ const shipTotal = p.qty * p.shipPerUnit;
+ const netRevenue = grossRevenue - channelFeeAmt - pgFeeAmt - shipTotal;
+ const cogsTotal = p.qty * p.unitCost;
+ const grossProfit = netRevenue - cogsTotal;
+ const adSpend = p.adROAS?Math.round(grossRevenue/p.adROAS*100):0;
+ const opexCalcTotal = p.qty * p.opexPerUnit + p.opexTotal;
+ const operatingProfit = grossProfit - adSpend - opexCalcTotal;
+ // VAT: 광고비 공제 제외
+ const vatDeductible = cogsTotal + opexCalcTotal;
+ const inputVAT = Math.round(vatDeductible/11);
+ const outputVAT = Math.round(grossRevenue/11);
+ const vatPayable = Math.max(0, outputVAT - inputVAT);
+ const corpTax = Math.max(0, Math.round(operatingProfit * p.corpTaxRate/100));
+ const netProfit = operatingProfit - vatPayable - corpTax;
+ return {
+  grossRevenue, channelFeeAmt, pgFeeAmt, shipTotal, netRevenue,
+  cogsTotal, grossProfit, adSpend, opexCalcTotal, operatingProfit,
+  vatPayable, corpTax, netProfit,
+  grossMargin: grossRevenue?Math.round(grossProfit/grossRevenue*1000)/10:0,
+  operatingMargin: grossRevenue?Math.round(operatingProfit/grossRevenue*1000)/10:0,
+  netMargin: grossRevenue?Math.round(netProfit/grossRevenue*1000)/10:0
+ };
+}
+function getInventoryBase(){
+ // 현재 inventoryData 에서 기본 파라미터 가져오기
+ const inv = (typeof inventoryData!=='undefined'&&inventoryData)?inventoryData:{};
+ let unitCost=0;
+ if(typeof cogsData!=='undefined'&&Array.isArray(cogsData)){
+  const totalUnit=cogsData.reduce((s,r)=>s+((r.unitPrice||r.amount)||0),0);
+  unitCost=Math.round(totalUnit*1.1);
+ }
+ let autoStock=0;
+ if(typeof cogsData!=='undefined'&&Array.isArray(cogsData)&&cogsData.length){
+  const fillRow=cogsData.find(r=>/(충진|완제품|완성|final|fill)/i.test(r.name||''));
+  if(fillRow) autoStock=fillRow.prodQty||0;
+  else autoStock=Math.min(...cogsData.map(r=>r.prodQty||Infinity).filter(v=>v!==Infinity&&v>0))||0;
+ }
+ let autoPrice=0;
+ const priceEl=document.getElementById('roas-price2');
+ if(priceEl) autoPrice=parseFloat(priceEl.value)||0;
+ return {
+  stock: inv.stock!==undefined?inv.stock:autoStock,
+  targetQty: inv.targetQty!==undefined?inv.targetQty:Math.round(autoStock*0.5),
+  price: inv.price!==undefined?inv.price:autoPrice,
+  unitCost: unitCost,
+  channelFee: inv.channelFee!==undefined?inv.channelFee:10.8,
+  pgFee: inv.pgFee!==undefined?inv.pgFee:2.9,
+  shipPerUnit: inv.shipPerUnit!==undefined?inv.shipPerUnit:3000,
+  targetROAS: inv.targetROAS!==undefined?inv.targetROAS:300,
+  opexPerUnit: inv.opexPerUnit!==undefined?inv.opexPerUnit:0,
+  opexTotal: inv.opexTotal!==undefined?inv.opexTotal:0,
+  corpTaxRate: inv.corpTaxRate!==undefined?inv.corpTaxRate:9
+ };
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 🎯 시나리오 비교 (최악/기본/최선)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function renderScenarioCompare(){
+ const wrap=document.getElementById('scenario-wrap');if(!wrap)return;
+ const N=n=>(Math.round(n||0)).toLocaleString('ko-KR');
+ const base=getInventoryBase();
+ const sc = (typeof scenarioData!=='undefined'&&scenarioData)?scenarioData:{};
+
+ // 시나리오 파라미터 (사용자 조정 가능)
+ const scenarios = [
+  {key:'worst', label:'😨 최악', color:'#C62828', bg:'#FFEBEE',
+   qtyRatio: sc.worst_qty!==undefined?sc.worst_qty:0.5,
+   roas: sc.worst_roas!==undefined?sc.worst_roas:150,
+   channelBoost: sc.worst_channel!==undefined?sc.worst_channel:1.2,
+   opexBoost: sc.worst_opex!==undefined?sc.worst_opex:1.3},
+  {key:'base', label:'😐 기본', color:'#1565C0', bg:'#E3F2FD',
+   qtyRatio: sc.base_qty!==undefined?sc.base_qty:1.0,
+   roas: sc.base_roas!==undefined?sc.base_roas:base.targetROAS,
+   channelBoost: sc.base_channel!==undefined?sc.base_channel:1.0,
+   opexBoost: sc.base_opex!==undefined?sc.base_opex:1.0},
+  {key:'best', label:'😎 최선', color:'#2E7D32', bg:'#E8F5E9',
+   qtyRatio: sc.best_qty!==undefined?sc.best_qty:1.5,
+   roas: sc.best_roas!==undefined?sc.best_roas:500,
+   channelBoost: sc.best_channel!==undefined?sc.best_channel:0.74, // 자사몰 전환 일부
+   opexBoost: sc.best_opex!==undefined?sc.best_opex:0.8}
+ ];
+
+ // 각 시나리오 계산
+ const results = scenarios.map(s=>{
+  const qty = Math.round(base.targetQty * s.qtyRatio);
+  const fin = calcFinance({
+   qty: qty,
+   price: base.price,
+   unitCost: base.unitCost,
+   channelFee: base.channelFee * s.channelBoost,
+   pgFee: base.pgFee,
+   shipPerUnit: base.shipPerUnit,
+   adROAS: s.roas,
+   opexPerUnit: base.opexPerUnit * s.opexBoost,
+   opexTotal: base.opexTotal * s.opexBoost,
+   corpTaxRate: base.corpTaxRate
+  });
+  // 3개월 뒤 현금 (cashflowData 참조)
+  const cf = (typeof cashflowData!=='undefined'&&cashflowData)?cashflowData:{};
+  const availableCash = cf.availableCash||0;
+  const laborCost = cf.laborCost||0;
+  const outsourceCost = cf.outsourceCost||0;
+  const otherSGA = cf.otherSGA||0;
+  // 최악에선 매출 실패 비용도 현금에 충격
+  const cashAfter3M = availableCash - laborCost - outsourceCost - otherSGA + fin.netProfit - fin.adSpend - (fin.cogsTotal*0); // 원가는 이미 선지출 가정이라 0
+  return {scenario:s, qty, fin, cashAfter3M};
+ });
+
+ const CLR={red:'#C62828',blue:'#1565C0',green:'#2E7D32',amber:'#F57F17',mu:'#666'};
+ let h='';
+
+ // ━━━ 시나리오 파라미터 입력 ━━━
+ h+='<div style="background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:14px">';
+ h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
+ h+='<div style="font-size:12px;font-weight:600">⚙️ 시나리오 파라미터</div>';
+ h+='<button class="btn" onclick="resetScenarios()" title="초기값 복원">↺ 초기화</button>';
+ h+='</div>';
+ h+='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="border-bottom:1px solid var(--bd);color:var(--mu);font-size:10px">';
+ h+='<th style="padding:6px;text-align:left">파라미터</th>';
+ scenarios.forEach(s=>h+='<th style="padding:6px;text-align:center;color:'+s.color+'">'+s.label+'</th>');
+ h+='</tr></thead><tbody>';
+ // 판매량 비율
+ h+='<tr style="border-bottom:.5px dashed var(--bd)"><td style="padding:5px 6px">판매량 (목표 × 배수)</td>';
+ scenarios.forEach(s=>h+='<td style="padding:5px 6px;text-align:center"><input type="number" step="0.1" value="'+s.qtyRatio+'" onchange="updateScenario(\''+s.key+'_qty\',this.value)" style="width:70px;padding:3px 6px;border:1px solid var(--bd);border-radius:4px;font-family:var(--mn);font-size:11px;text-align:center"><div style="font-size:9px;color:var(--mu)">'+Math.round(base.targetQty*s.qtyRatio)+'개</div></td>');
+ h+='</tr>';
+ // ROAS
+ h+='<tr style="border-bottom:.5px dashed var(--bd)"><td style="padding:5px 6px">목표 ROAS (%)</td>';
+ scenarios.forEach(s=>h+='<td style="padding:5px 6px;text-align:center"><input type="number" value="'+s.roas+'" onchange="updateScenario(\''+s.key+'_roas\',this.value)" style="width:70px;padding:3px 6px;border:1px solid var(--bd);border-radius:4px;font-family:var(--mn);font-size:11px;text-align:center"></td>');
+ h+='</tr>';
+ // 수수료 배수
+ h+='<tr style="border-bottom:.5px dashed var(--bd)"><td style="padding:5px 6px">채널 수수료 × 배수</td>';
+ scenarios.forEach(s=>h+='<td style="padding:5px 6px;text-align:center"><input type="number" step="0.05" value="'+s.channelBoost+'" onchange="updateScenario(\''+s.key+'_channel\',this.value)" style="width:70px;padding:3px 6px;border:1px solid var(--bd);border-radius:4px;font-family:var(--mn);font-size:11px;text-align:center"><div style="font-size:9px;color:var(--mu)">'+(base.channelFee*s.channelBoost).toFixed(1)+'%</div></td>');
+ h+='</tr>';
+ // 판관비 배수
+ h+='<tr><td style="padding:5px 6px">판관비 × 배수</td>';
+ scenarios.forEach(s=>h+='<td style="padding:5px 6px;text-align:center"><input type="number" step="0.05" value="'+s.opexBoost+'" onchange="updateScenario(\''+s.key+'_opex\',this.value)" style="width:70px;padding:3px 6px;border:1px solid var(--bd);border-radius:4px;font-family:var(--mn);font-size:11px;text-align:center"></td>');
+ h+='</tr>';
+ h+='</tbody></table></div>';
+
+ // ━━━ 시나리오 3열 카드 비교 ━━━
+ h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">';
+ results.forEach(r=>{
+  const s=r.scenario;const f=r.fin;
+  h+='<div style="background:'+s.bg+';border:2px solid '+s.color+';border-radius:10px;padding:14px">';
+  h+='<div style="font-size:13px;font-weight:700;color:'+s.color+';margin-bottom:10px;text-align:center;padding-bottom:8px;border-bottom:1px solid '+s.color+'40">'+s.label+'</div>';
+  h+=rowLine('판매량',N(r.qty)+'개',CLR.mu);
+  h+=rowLine('매출',N(f.grossRevenue)+'원',CLR.blue,true);
+  h+=rowLine('수수료+택배','-'+N(f.channelFeeAmt+f.pgFeeAmt+f.shipTotal)+'원',CLR.red);
+  h+=rowLine('생산원가','-'+N(f.cogsTotal)+'원',CLR.red);
+  h+=rowLine('매출총이익',N(f.grossProfit)+'원 ('+f.grossMargin+'%)',f.grossProfit>=0?CLR.green:CLR.red,true);
+  h+=rowLine('광고비','-'+N(f.adSpend)+'원',CLR.red);
+  h+=rowLine('판관비','-'+N(f.opexCalcTotal)+'원',CLR.red);
+  h+=rowLine('영업이익',N(f.operatingProfit)+'원 ('+f.operatingMargin+'%)',f.operatingProfit>=0?CLR.amber:CLR.red,true);
+  h+=rowLine('세금','-'+N(f.vatPayable+f.corpTax)+'원',CLR.red);
+  h+='<div style="margin-top:8px;padding:8px;background:'+s.color+'15;border-radius:6px;text-align:center">';
+  h+='<div style="font-size:10px;color:'+s.color+';margin-bottom:2px">💵 순이익</div>';
+  h+='<div style="font-size:18px;font-weight:700;font-family:var(--mn);color:'+(f.netProfit>=0?s.color:CLR.red)+'">'+N(f.netProfit)+'원</div>';
+  h+='<div style="font-size:10px;color:var(--mu);margin-top:2px">마진율 '+f.netMargin+'% · 개당 '+N(r.qty?Math.round(f.netProfit/r.qty):0)+'원</div></div>';
+  // 3개월 뒤 현금
+  h+='<div style="margin-top:6px;padding:6px 8px;background:var(--sur);border:1px dashed '+s.color+'80;border-radius:5px;text-align:center">';
+  h+='<div style="font-size:9px;color:var(--mu)">3개월 뒤 현금</div>';
+  h+='<div style="font-size:13px;font-weight:600;font-family:var(--mn);color:'+(r.cashAfter3M>=0?CLR.green:CLR.red)+'">'+N(r.cashAfter3M)+'원</div></div>';
+  h+='</div>';
+ });
+ h+='</div>';
+
+ // ━━━ 비교 분석 ━━━
+ const worst=results[0].fin, baseR=results[1].fin, best=results[2].fin;
+ const worstCash=results[0].cashAfter3M, baseCash=results[1].cashAfter3M, bestCash=results[2].cashAfter3M;
+ h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
+ // 좌: 핵심 인사이트
+ h+='<div style="background:'+(worstCash<0?'#FFEBEE':'#E8F5E9')+';border:1px solid '+(worstCash<0?'#EF9A9A':'#A5D6A7')+';border-radius:8px;padding:12px">';
+ h+='<div style="font-size:11px;font-weight:600;margin-bottom:8px;color:'+(worstCash<0?'#C62828':'#2E7D32')+'">🎯 최악 시나리오 생존 분석</div>';
+ h+='<div style="font-size:11px;line-height:1.8">';
+ h+='<b>Q. 최악에서 버틸 수 있나?</b><br>';
+ if(worstCash>=0){
+  h+='<span style="color:#2E7D32">✅ <b>버틸 수 있음.</b> 최악 시나리오에도 3개월 뒤 '+N(worstCash)+'원 유지.</span><br><br>';
+ } else {
+  h+='<span style="color:#C62828">🚨 <b>자금 부족 위험.</b> 최악에선 '+N(Math.abs(worstCash))+'원 부족.</span><br><br>';
+ }
+ h+='<b>기본 vs 최선 차이:</b><br>순이익 '+N(best.netProfit-baseR.netProfit)+'원 추가 가능<br><br>';
+ h+='<b>기본 vs 최악 차이:</b><br>순이익 '+N(baseR.netProfit-worst.netProfit)+'원 손실 위험';
+ h+='</div></div>';
+ // 우: 리스크 관리 제안
+ h+='<div style="background:#FFF8E1;border:1px solid #FFD54F;border-radius:8px;padding:12px">';
+ h+='<div style="font-size:11px;font-weight:600;color:#F57F17;margin-bottom:8px">⚠️ 리스크 관리 체크리스트</div>';
+ h+='<div style="font-size:11px;line-height:1.8">';
+ h+='<div style="margin-bottom:4px">□ 최악(ROAS '+scenarios[0].roas+'%) 상황 대응 플랜 (자사몰 직판 유도)</div>';
+ h+='<div style="margin-bottom:4px">□ 기본→최선 진입 조건 (재구매율 %↑, 구전 효과)</div>';
+ h+='<div style="margin-bottom:4px">□ 월 판매 목표 달성 실패 시 의사결정 기준</div>';
+ h+='<div style="margin-bottom:4px">□ 추가 자금 조달 옵션 (대출·투자·프리세일)</div>';
+ h+='<div>□ 재고 회전 실패 시 할인·B2B 판로 준비</div>';
+ h+='</div></div>';
+ h+='</div>';
+
+ wrap.innerHTML=h;
+
+ function rowLine(label,val,color,bold){
+  return '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:10px;'+(bold?'font-weight:600;border-top:1px solid '+color+'30;padding-top:5px;margin-top:3px;':'')+'">'+
+   '<span style="color:var(--mu)">'+label+'</span>'+
+   '<span style="font-family:var(--mn);color:'+color+'">'+val+'</span></div>';
+ }
+}
+function updateScenario(key,val){
+ if(typeof scenarioData==='undefined')window.scenarioData={};
+ const num=parseFloat(val);
+ scenarioData[key]=isNaN(num)?0:num;
+ if(typeof sv==='function')sv('시나리오 조정');
+ renderScenarioCompare();
+}
+function resetScenarios(){
+ if(!confirm('시나리오 파라미터를 초기값으로 되돌립니다. 계속할까요?'))return;
+ window.scenarioData={};
+ if(typeof sv==='function')sv('시나리오 초기화');
+ renderScenarioCompare();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 📈 월별 현금흐름 (6/12개월 롤링)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function renderCashflowChart(){
+ const wrap=document.getElementById('cashflow-wrap');if(!wrap)return;
+ const N=n=>(Math.round(n||0)).toLocaleString('ko-KR');
+ const base=getInventoryBase();
+ const cfc = (typeof cashflowChartData!=='undefined'&&cashflowChartData)?cashflowChartData:{};
+ const cf = (typeof cashflowData!=='undefined'&&cashflowData)?cashflowData:{};
+
+ const period = cfc.period||6; // 3/6/12
+ const availableCash = cf.availableCash||0;
+ const monthlyLabor = (cf.laborCost||0)/3; // 3개월 인건비를 월할
+ const monthlyOutsource = (cf.outsourceCost||0)/3;
+ const monthlyOtherSGA = (cf.otherSGA||0)/3;
+ const monthlyFixed = monthlyLabor + monthlyOutsource + monthlyOtherSGA;
+
+ // 월별 판매량 기본 곡선 (S-curve 형태, 사용자 조정 가능)
+ let monthlyQty = cfc.monthlyQty;
+ if(!monthlyQty || !Array.isArray(monthlyQty) || monthlyQty.length!==period){
+  // 기본 S-curve: 첫 달 30 → 둘째 100 → 셋째 200 → 넷째 300 ...
+  const totalTarget = base.targetQty * (period/3); // 3개월 목표를 기간 비례로
+  monthlyQty = [];
+  for(let i=0;i<period;i++){
+   // 시그모이드 성장 곡선
+   const x = (i+1)/period;
+   const weight = 1/(1+Math.exp(-6*(x-0.5)));
+   monthlyQty.push(Math.round(totalTarget * weight / period * 3));
+  }
+ }
+
+ // 월별 계산
+ const rows = [];
+ let cumulativeCash = availableCash;
+ let breakEvenMonth = -1;
+ let totalCumulativeQty = 0;
+ for(let i=0;i<period;i++){
+  const qty = monthlyQty[i]||0;
+  totalCumulativeQty += qty;
+  const fin = calcFinance({
+   qty: qty,
+   price: base.price,
+   unitCost: base.unitCost,
+   channelFee: base.channelFee,
+   pgFee: base.pgFee,
+   shipPerUnit: base.shipPerUnit,
+   adROAS: base.targetROAS,
+   opexPerUnit: base.opexPerUnit,
+   opexTotal: 0, // 고정비는 별도
+   corpTaxRate: base.corpTaxRate
+  });
+  // 월 순현금흐름 = 순이익 - 월 고정비 (인건비·외주·판관)
+  const monthNetCash = fin.netProfit - monthlyFixed;
+  cumulativeCash += monthNetCash;
+  if(breakEvenMonth<0 && cumulativeCash>=availableCash) breakEvenMonth=i+1;
+  rows.push({month:i+1, qty, fin, monthNetCash, cumulativeCash});
+ }
+
+ const maxCash = Math.max(...rows.map(r=>r.cumulativeCash), availableCash);
+ const minCash = Math.min(...rows.map(r=>r.cumulativeCash), availableCash);
+
+ const CLR={blue:'#1565C0',green:'#2E7D32',amber:'#F57F17',red:'#C62828',purple:'#6A1B9A'};
+ let h='';
+
+ // ━━━ 기간 선택 ━━━
+ h+='<div style="background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:14px">';
+ h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
+ h+='<div style="font-size:12px;font-weight:600">⚙️ 기간 설정</div>';
+ h+='<div style="display:flex;gap:6px">';
+ [3,6,12].forEach(p=>{
+  const active = p===period;
+  h+='<button onclick="updateCashflowPeriod('+p+')" style="padding:5px 14px;border:1px solid '+(active?CLR.blue:'var(--bd)')+';background:'+(active?CLR.blue:'var(--sur)')+';color:'+(active?'#fff':'var(--tx)')+';border-radius:5px;font-size:11px;font-weight:'+(active?'600':'400')+';cursor:pointer">'+p+'개월</button>';
+ });
+ h+='<button onclick="resetCashflowChart()" class="btn" style="margin-left:8px">↺</button>';
+ h+='</div></div>';
+ h+='<div style="font-size:10px;color:var(--mu);line-height:1.6">💡 기본 곡선: S자 성장 (월 1→2→3···로 점진 상승). 각 월 판매량은 표에서 직접 수정 가능. 매달 고정비(인건비+외주+판관비 ÷ 3)가 차감됩니다.</div>';
+ h+='</div>';
+
+ // ━━━ 요약 KPI ━━━
+ const totalNetProfit = rows.reduce((s,r)=>s+r.fin.netProfit,0);
+ const totalFixedCost = monthlyFixed * period;
+ const finalCash = rows[rows.length-1].cumulativeCash;
+ h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">';
+ h+=kpi('📦 총 판매량', N(totalCumulativeQty)+'개', CLR.blue, '#E3F2FD', period+'개월 누적');
+ h+=kpi('💰 총 순이익', N(totalNetProfit)+'원', totalNetProfit>=0?CLR.green:CLR.red, totalNetProfit>=0?'#E8F5E9':'#FFEBEE', '세전+세후');
+ h+=kpi('🏠 총 고정비', N(totalFixedCost)+'원', CLR.amber, '#FFF8E1', '월 '+N(monthlyFixed)+'원');
+ h+=kpi('💵 '+period+'개월 뒤 현금', N(finalCash)+'원', finalCash>=0?CLR.purple:CLR.red, finalCash>=0?'#F3E5F5':'#FFEBEE', '시작 '+N(availableCash)+'원');
+ h+='</div>';
+
+ // ━━━ 차트 (SVG) ━━━
+ h+='<div style="background:var(--sur);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:14px">';
+ h+='<div style="font-size:12px;font-weight:600;margin-bottom:10px">📊 누적 현금 추이</div>';
+ const chartW=860, chartH=240, padL=60, padR=20, padT=20, padB=30;
+ const plotW = chartW-padL-padR, plotH = chartH-padT-padB;
+ const yRange = Math.max(1, maxCash - Math.min(0, minCash));
+ const yMin = Math.min(0, minCash);
+ const xScale = (i)=>padL+(i*plotW/period);
+ const yScale = (v)=>padT+plotH-((v-yMin)/yRange)*plotH;
+ 
+ h+='<svg viewBox="0 0 '+chartW+' '+chartH+'" style="width:100%;height:auto">';
+ // 배경 격자
+ for(let i=0;i<=4;i++){
+  const y = padT + (plotH/4)*i;
+  const v = yMin + yRange*(1-i/4);
+  h+='<line x1="'+padL+'" y1="'+y+'" x2="'+(chartW-padR)+'" y2="'+y+'" stroke="#EEE" stroke-width="1"/>';
+  h+='<text x="'+(padL-5)+'" y="'+(y+3)+'" text-anchor="end" style="font-size:9px;fill:#999;font-family:monospace">'+N(v/1e6)+'M</text>';
+ }
+ // 0 라인 강조
+ if(yMin<0){
+  const zeroY = yScale(0);
+  h+='<line x1="'+padL+'" y1="'+zeroY+'" x2="'+(chartW-padR)+'" y2="'+zeroY+'" stroke="#999" stroke-width="1" stroke-dasharray="4,4"/>';
+ }
+ // 시작 현금 기준선
+ const startY = yScale(availableCash);
+ h+='<line x1="'+padL+'" y1="'+startY+'" x2="'+(chartW-padR)+'" y2="'+startY+'" stroke="'+CLR.blue+'" stroke-width="1" stroke-dasharray="3,3" opacity="0.4"/>';
+ h+='<text x="'+(chartW-padR-5)+'" y="'+(startY-4)+'" text-anchor="end" style="font-size:9px;fill:'+CLR.blue+'">시작 현금</text>';
+ // x축 레이블
+ for(let i=0;i<=period;i++){
+  const x=xScale(i);
+  h+='<text x="'+x+'" y="'+(chartH-8)+'" text-anchor="middle" style="font-size:9px;fill:#999;font-family:monospace">'+(i===0?'0':i)+'M</text>';
+ }
+ // 영역 채우기 (시작현금 대비)
+ let areaPath='M '+padL+' '+startY;
+ rows.forEach((r,i)=>{areaPath+=' L '+xScale(i+1)+' '+yScale(r.cumulativeCash);});
+ areaPath+=' L '+xScale(period)+' '+startY+' Z';
+ h+='<path d="'+areaPath+'" fill="'+CLR.blue+'" opacity="0.12"/>';
+ // 라인
+ let linePath='M '+padL+' '+startY;
+ rows.forEach((r,i)=>{linePath+=' L '+xScale(i+1)+' '+yScale(r.cumulativeCash);});
+ h+='<path d="'+linePath+'" fill="none" stroke="'+CLR.blue+'" stroke-width="2.5"/>';
+ // 점
+ rows.forEach((r,i)=>{
+  const cx=xScale(i+1), cy=yScale(r.cumulativeCash);
+  const color = r.cumulativeCash>=availableCash?CLR.green:(r.cumulativeCash<0?CLR.red:CLR.amber);
+  h+='<circle cx="'+cx+'" cy="'+cy+'" r="4" fill="'+color+'" stroke="#fff" stroke-width="1.5"/>';
+  h+='<title>'+r.month+'월: '+N(r.cumulativeCash)+'원</title>';
+ });
+ // 손익분기점 표시
+ if(breakEvenMonth>0){
+  const bx = xScale(breakEvenMonth), by = yScale(rows[breakEvenMonth-1].cumulativeCash);
+  h+='<circle cx="'+bx+'" cy="'+by+'" r="8" fill="none" stroke="'+CLR.green+'" stroke-width="2"/>';
+  h+='<text x="'+bx+'" y="'+(by-12)+'" text-anchor="middle" style="font-size:10px;fill:'+CLR.green+';font-weight:600">BEP ('+breakEvenMonth+'M)</text>';
+ }
+ h+='</svg>';
+ h+='</div>';
+
+ // ━━━ 월별 상세 표 ━━━
+ h+='<div style="background:var(--sur);border:1px solid var(--bd);border-radius:10px;overflow:hidden">';
+ h+='<div style="padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--bd);font-size:12px;font-weight:600">📋 월별 상세 (숫자 클릭해서 수정)</div>';
+ h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:860px">';
+ h+='<thead><tr style="background:var(--bg);border-bottom:1px solid var(--bd);color:var(--mu);font-size:10px">';
+ h+='<th style="padding:6px 10px;text-align:center;width:50px">월</th>';
+ h+='<th style="padding:6px 10px;text-align:right">판매량</th>';
+ h+='<th style="padding:6px 10px;text-align:right">매출</th>';
+ h+='<th style="padding:6px 10px;text-align:right">광고비</th>';
+ h+='<th style="padding:6px 10px;text-align:right">영업이익</th>';
+ h+='<th style="padding:6px 10px;text-align:right">순이익</th>';
+ h+='<th style="padding:6px 10px;text-align:right">월 고정비</th>';
+ h+='<th style="padding:6px 10px;text-align:right">순현금흐름</th>';
+ h+='<th style="padding:6px 10px;text-align:right;background:#E3F2FD20">누적 현금</th>';
+ h+='</tr></thead><tbody>';
+ rows.forEach((r,i)=>{
+  const cashColor = r.cumulativeCash>=availableCash?CLR.green:(r.cumulativeCash<0?CLR.red:CLR.amber);
+  h+='<tr style="border-bottom:.5px solid var(--bd)">';
+  h+='<td style="padding:5px 10px;text-align:center;font-weight:500">'+r.month+'M</td>';
+  h+='<td style="padding:5px 10px;text-align:right"><input type="number" value="'+r.qty+'" onchange="updateMonthlyQty('+i+',this.value)" style="width:70px;padding:2px 6px;border:1px solid var(--bd);border-radius:3px;font-family:var(--mn);font-size:11px;text-align:right;background:var(--sur);outline:none"></td>';
+  h+='<td style="padding:5px 10px;text-align:right;font-family:var(--mn)">'+N(r.fin.grossRevenue)+'</td>';
+  h+='<td style="padding:5px 10px;text-align:right;font-family:var(--mn);color:'+CLR.red+'">-'+N(r.fin.adSpend)+'</td>';
+  h+='<td style="padding:5px 10px;text-align:right;font-family:var(--mn);color:'+(r.fin.operatingProfit>=0?CLR.amber:CLR.red)+'">'+N(r.fin.operatingProfit)+'</td>';
+  h+='<td style="padding:5px 10px;text-align:right;font-family:var(--mn);font-weight:500;color:'+(r.fin.netProfit>=0?CLR.purple:CLR.red)+'">'+N(r.fin.netProfit)+'</td>';
+  h+='<td style="padding:5px 10px;text-align:right;font-family:var(--mn);color:'+CLR.red+'">-'+N(monthlyFixed)+'</td>';
+  h+='<td style="padding:5px 10px;text-align:right;font-family:var(--mn);color:'+(r.monthNetCash>=0?CLR.green:CLR.red)+'">'+N(r.monthNetCash)+'</td>';
+  h+='<td style="padding:5px 10px;text-align:right;font-family:var(--mn);font-weight:600;background:#E3F2FD10;color:'+cashColor+'">'+N(r.cumulativeCash)+'</td>';
+  h+='</tr>';
+ });
+ h+='</tbody></table></div></div>';
+
+ // ━━━ 인사이트 ━━━
+ h+='<div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px">';
+ // 손익분기 메시지
+ h+='<div style="background:#E3F2FD;border:1px solid #90CAF9;border-left:4px solid '+CLR.blue+';border-radius:8px;padding:12px">';
+ h+='<div style="font-size:11px;font-weight:600;color:'+CLR.blue+';margin-bottom:8px">🎯 손익분기점 분석</div>';
+ h+='<div style="font-size:11px;line-height:1.8">';
+ if(breakEvenMonth>0){
+  h+='<b>✅ 흑자 전환:</b> <b style="font-size:13px;color:'+CLR.green+'">'+breakEvenMonth+'개월차</b>에 시작 현금 회복<br>';
+ } else {
+  h+='<b>⚠️ '+period+'개월 내 흑자 전환 어려움</b><br>';
+ }
+ const minMonth = rows.reduce((m,r,i)=>r.cumulativeCash<rows[m].cumulativeCash?i:m,0);
+ h+='<b>최저 현금 시점:</b> '+(minMonth+1)+'개월차 '+N(rows[minMonth].cumulativeCash)+'원<br>';
+ h+='<b>필요 최소 자본:</b> '+N(availableCash-rows[minMonth].cumulativeCash)+'원 (현재 가용 현금에서 추가)<br>';
+ h+='</div></div>';
+ // 개선 제안
+ h+='<div style="background:#FFF8E1;border:1px solid #FFD54F;border-left:4px solid '+CLR.amber+';border-radius:8px;padding:12px">';
+ h+='<div style="font-size:11px;font-weight:600;color:'+CLR.amber+';margin-bottom:8px">💡 전략 시사점</div>';
+ h+='<div style="font-size:11px;line-height:1.8">';
+ h+='<b>월 필요 판매량 (BEP):</b> '+N(monthlyFixed?Math.ceil(monthlyFixed/(base.price*(1-(base.channelFee+base.pgFee)/100)-base.unitCost-base.shipPerUnit-Math.round(base.price/base.targetROAS*100))):0)+'개<br>';
+ h+='<b>현금 고갈 방지:</b> 월 '+N(Math.ceil(monthlyFixed/1000)*1000)+'원 이상 고정비 통제<br>';
+ h+='<b>ROAS 유지:</b> 평균 '+base.targetROAS+'% 달성 필수';
+ h+='</div></div></div>';
+
+ wrap.innerHTML=h;
+
+ function kpi(label,value,color,bg,sub){
+  return '<div style="background:'+bg+';border:2px solid '+color+'30;border-radius:10px;padding:12px">'+
+   '<div style="font-size:10px;color:'+color+';margin-bottom:4px;font-weight:500">'+label+'</div>'+
+   '<div style="font-size:16px;font-weight:700;font-family:var(--mn);color:'+color+';line-height:1.2">'+value+'</div>'+
+   '<div style="font-size:9px;color:var(--mu);margin-top:3px">'+sub+'</div></div>';
+ }
+}
+function updateCashflowPeriod(p){
+ if(typeof cashflowChartData==='undefined')window.cashflowChartData={};
+ cashflowChartData.period=p;
+ cashflowChartData.monthlyQty=null; // 기간 바뀌면 기본값 재생성
+ if(typeof sv==='function')sv('현금흐름 기간');
+ renderCashflowChart();
+}
+function updateMonthlyQty(idx,val){
+ if(typeof cashflowChartData==='undefined')window.cashflowChartData={};
+ const period=cashflowChartData.period||6;
+ if(!cashflowChartData.monthlyQty || cashflowChartData.monthlyQty.length!==period){
+  // 현재 렌더된 값에서 재구성 필요
+  const inputs=document.querySelectorAll('#cashflow-wrap input[type=number]');
+  const vals=[];
+  for(let i=0;i<period;i++){
+   vals.push(parseFloat(inputs[i]?inputs[i].value:0)||0);
+  }
+  cashflowChartData.monthlyQty=vals;
+ }
+ const num=parseFloat(val);
+ cashflowChartData.monthlyQty[idx]=isNaN(num)?0:num;
+ if(typeof sv==='function')sv('월별 판매량');
+ renderCashflowChart();
+}
+function resetCashflowChart(){
+ if(!confirm('월별 현금흐름을 초기값으로 되돌립니다. 계속할까요?'))return;
+ window.cashflowChartData={};
+ if(typeof sv==='function')sv('현금흐름 초기화');
+ renderCashflowChart();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 📉 ROAS 감도 분석
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function renderROASSensitivity(){
+ const wrap=document.getElementById('sensitivity-wrap');if(!wrap)return;
+ const N=n=>(Math.round(n||0)).toLocaleString('ko-KR');
+ const base=getInventoryBase();
+ const sens = (typeof sensitivityData!=='undefined'&&sensitivityData)?sensitivityData:{};
+ const targetQty = sens.qty!==undefined?sens.qty:base.targetQty;
+
+ // 테스트할 ROAS 값들
+ const roasList = [130, 150, 180, 200, 250, 300, 400, 500, 700, 1000];
+ const results = roasList.map(roas=>{
+  const fin = calcFinance({
+   qty: targetQty,
+   price: base.price,
+   unitCost: base.unitCost,
+   channelFee: base.channelFee,
+   pgFee: base.pgFee,
+   shipPerUnit: base.shipPerUnit,
+   adROAS: roas,
+   opexPerUnit: base.opexPerUnit,
+   opexTotal: base.opexTotal,
+   corpTaxRate: base.corpTaxRate
+  });
+  return {roas, fin};
+ });
+
+ // 손익분기 ROAS 찾기 (영업이익 = 0이 되는 지점, 보간)
+ let breakEvenROAS = 0;
+ for(let i=0;i<results.length-1;i++){
+  if(results[i].fin.operatingProfit<0 && results[i+1].fin.operatingProfit>=0){
+   const r1=results[i], r2=results[i+1];
+   breakEvenROAS = r1.roas + (r2.roas-r1.roas) * (-r1.fin.operatingProfit)/(r2.fin.operatingProfit-r1.fin.operatingProfit);
+   break;
+  }
+ }
+ // 순이익 손익분기
+ let netBreakEvenROAS = 0;
+ for(let i=0;i<results.length-1;i++){
+  if(results[i].fin.netProfit<0 && results[i+1].fin.netProfit>=0){
+   const r1=results[i], r2=results[i+1];
+   netBreakEvenROAS = r1.roas + (r2.roas-r1.roas) * (-r1.fin.netProfit)/(r2.fin.netProfit-r1.fin.netProfit);
+   break;
+  }
+ }
+
+ const CLR={blue:'#1565C0',green:'#2E7D32',amber:'#F57F17',red:'#C62828',purple:'#6A1B9A'};
+ let h='';
+
+ // ━━━ 입력 ━━━
+ h+='<div style="background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:14px">';
+ h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:12px">';
+ h+='<div><label style="font-size:10px;color:var(--mu);display:block;margin-bottom:3px">기준 판매량 (개)</label>';
+ h+='<input type="number" value="'+targetQty+'" onchange="updateSensitivity(this.value)" style="width:130px;padding:5px 8px;border:2px solid '+CLR.blue+';border-radius:5px;font-size:13px;font-family:var(--mn);font-weight:500;background:var(--sur);color:var(--tx);outline:none"></div>';
+ h+='<div style="flex:1;font-size:10px;color:var(--mu);line-height:1.6">📊 위 판매량 기준으로 ROAS 130~1000% 사이에서 순이익이 어떻게 변하는지 보여줍니다. <b>광고 효율이 낮으면 재고 다 팔아도 손실</b>이 날 수 있습니다.</div>';
+ h+='<button class="btn" onclick="resetSensitivity()">↺</button>';
+ h+='</div></div>';
+
+ // ━━━ 손익분기 KPI ━━━
+ h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">';
+ h+=kpiCell('🎯 영업이익 BEP ROAS',
+  breakEvenROAS>0?Math.round(breakEvenROAS)+'%':'손익분기 이전',
+  breakEvenROAS>0?CLR.amber:CLR.red,
+  breakEvenROAS>0?'#FFF8E1':'#FFEBEE',
+  breakEvenROAS>0?'이 ROAS 이상이면 영업흑자':'전범위 적자');
+ h+=kpiCell('💵 순이익 BEP ROAS',
+  netBreakEvenROAS>0?Math.round(netBreakEvenROAS)+'%':'손익분기 이전',
+  netBreakEvenROAS>0?CLR.purple:CLR.red,
+  netBreakEvenROAS>0?'#F3E5F5':'#FFEBEE',
+  netBreakEvenROAS>0?'세금 후 흑자 전환 지점':'전범위 순손실');
+ h+=kpiCell('📊 현재 목표 ROAS',
+  base.targetROAS+'%',
+  base.targetROAS>=netBreakEvenROAS?CLR.green:CLR.red,
+  base.targetROAS>=netBreakEvenROAS?'#E8F5E9':'#FFEBEE',
+  base.targetROAS>=netBreakEvenROAS?'✅ 흑자 구간':'🚨 적자 구간');
+ h+='</div>';
+
+ // ━━━ ROAS 감도 표 ━━━
+ h+='<div style="background:var(--sur);border:1px solid var(--bd);border-radius:10px;overflow:hidden;margin-bottom:14px">';
+ h+='<div style="padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--bd);font-size:12px;font-weight:600">📋 ROAS별 수익 시뮬레이션 ('+N(targetQty)+'개 판매 기준)</div>';
+ h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:760px">';
+ h+='<thead><tr style="background:var(--bg);border-bottom:1px solid var(--bd);color:var(--mu);font-size:10px">';
+ h+='<th style="padding:6px 10px;text-align:center;width:70px">ROAS</th>';
+ h+='<th style="padding:6px 10px;text-align:right">매출</th>';
+ h+='<th style="padding:6px 10px;text-align:right">광고비</th>';
+ h+='<th style="padding:6px 10px;text-align:right">영업이익</th>';
+ h+='<th style="padding:6px 10px;text-align:right">세금</th>';
+ h+='<th style="padding:6px 10px;text-align:right">순이익</th>';
+ h+='<th style="padding:6px 10px;text-align:right;width:70px">마진율</th>';
+ h+='<th style="padding:6px 10px;text-align:center;width:80px">판정</th>';
+ h+='<th style="padding:6px 10px;text-align:left;width:140px">시각화</th>';
+ h+='</tr></thead><tbody>';
+ const maxProfit = Math.max(...results.map(r=>Math.abs(r.fin.netProfit)));
+ results.forEach(r=>{
+  const f = r.fin;
+  const isTarget = Math.abs(r.roas - base.targetROAS) < 25;
+  const verdict = f.netProfit>=0 ? '✅ 흑자' : (f.operatingProfit>=0 ? '🟡 세후손실' : '❌ 적자');
+  const verdictColor = f.netProfit>=0 ? CLR.green : (f.operatingProfit>=0 ? CLR.amber : CLR.red);
+  const barW = maxProfit?(Math.abs(f.netProfit)/maxProfit*100):0;
+  const barColor = f.netProfit>=0?CLR.green:CLR.red;
+  h+='<tr style="border-bottom:.5px solid var(--bd);'+(isTarget?'background:#E3F2FD30;font-weight:500':'')+'">';
+  h+='<td style="padding:6px 10px;text-align:center;font-family:var(--mn);font-weight:600;color:'+CLR.blue+'">'+r.roas+'%'+(isTarget?' ★':'')+'</td>';
+  h+='<td style="padding:6px 10px;text-align:right;font-family:var(--mn)">'+N(f.grossRevenue)+'</td>';
+  h+='<td style="padding:6px 10px;text-align:right;font-family:var(--mn);color:'+CLR.red+'">-'+N(f.adSpend)+'</td>';
+  h+='<td style="padding:6px 10px;text-align:right;font-family:var(--mn);color:'+(f.operatingProfit>=0?CLR.amber:CLR.red)+';font-weight:500">'+N(f.operatingProfit)+'</td>';
+  h+='<td style="padding:6px 10px;text-align:right;font-family:var(--mn);color:'+CLR.red+'">-'+N(f.vatPayable+f.corpTax)+'</td>';
+  h+='<td style="padding:6px 10px;text-align:right;font-family:var(--mn);font-weight:600;color:'+(f.netProfit>=0?CLR.purple:CLR.red)+'">'+N(f.netProfit)+'</td>';
+  h+='<td style="padding:6px 10px;text-align:right;font-family:var(--mn);font-size:10px;color:var(--mu)">'+f.netMargin+'%</td>';
+  h+='<td style="padding:6px 10px;text-align:center;font-size:10px;color:'+verdictColor+'">'+verdict+'</td>';
+  h+='<td style="padding:6px 10px"><div style="display:flex;align-items:center;gap:4px">';
+  if(f.netProfit>=0){
+   h+='<div style="flex:1;height:14px;background:#F5F5F5;border-radius:3px;overflow:hidden;position:relative"><div style="height:100%;width:'+barW+'%;background:'+barColor+';transition:width .3s"></div></div>';
+  } else {
+   h+='<div style="flex:1;height:14px;background:#F5F5F5;border-radius:3px;overflow:hidden;position:relative"><div style="position:absolute;right:0;top:0;height:100%;width:'+barW+'%;background:'+barColor+';transition:width .3s"></div></div>';
+  }
+  h+='</div></td>';
+  h+='</tr>';
+ });
+ h+='</tbody></table></div></div>';
+
+ // ━━━ 광고비 역산 팁 ━━━
+ h+='<div style="background:#E3F2FD;border:1px solid #90CAF9;border-left:4px solid '+CLR.blue+';border-radius:8px;padding:12px">';
+ h+='<div style="font-size:11px;font-weight:600;color:'+CLR.blue+';margin-bottom:8px">🧮 감도 분석 해석 가이드</div>';
+ h+='<div style="font-size:11px;line-height:1.8;color:var(--tx)">';
+ h+='<b>ROAS란?</b> "광고비 1원 쓸 때 매출 얼마 발생하나"의 지표. ROAS 300% = 광고 1만원으로 매출 3만원.<br>';
+ h+='<b>적자 발생 이유:</b> 매출 100만원이라도 광고비가 너무 크면(ROAS 낮으면) 수수료·원가 차감 후 남는 게 없음<br>';
+ h+='<b>업계 평균:</b> 성숙 브랜드 300~500% / 런칭 초기 150~250% / 성수기 500~1000%+<br>';
+ h+='<b>개선 전략:</b> 콘텐츠 CTR·CVR·객단가 상승 → ROAS 자동 상승. 단순히 "광고비 줄이기"는 매출까지 떨어뜨릴 수 있음';
+ h+='</div></div>';
+
+ wrap.innerHTML=h;
+
+ function kpiCell(label,value,color,bg,sub){
+  return '<div style="background:'+bg+';border:2px solid '+color+'30;border-radius:10px;padding:12px;text-align:center">'+
+   '<div style="font-size:10px;color:'+color+';margin-bottom:4px;font-weight:500">'+label+'</div>'+
+   '<div style="font-size:20px;font-weight:700;font-family:var(--mn);color:'+color+'">'+value+'</div>'+
+   '<div style="font-size:9px;color:var(--mu);margin-top:3px">'+sub+'</div></div>';
+ }
+}
+function updateSensitivity(val){
+ if(typeof sensitivityData==='undefined')window.sensitivityData={};
+ const num=parseFloat(val);
+ sensitivityData.qty=isNaN(num)?0:num;
+ if(typeof sv==='function')sv('감도 분석 수량');
+ renderROASSensitivity();
+}
+function resetSensitivity(){
+ window.sensitivityData={};
+ if(typeof sv==='function')sv('감도 분석 초기화');
+ renderROASSensitivity();
+}
+
 
 
 
@@ -3865,7 +4600,7 @@ function saveIdea(){sv();buildIdea();buildIdeaIngredients();showToast('아이디
 // COSTS (t5)
 // ============================================================
 function showCostTab(tab, btn){
- const panels=['cost','expense','adspend','monthly','prod','roas','allexp','adexp','prodexp','totalbudget','inventory'];
+ const panels=['cost','expense','adspend','monthly','prod','roas','allexp','adexp','prodexp','totalbudget','inventory','cashflow','scenario','sensitivity'];
  panels.forEach(p=>{const el=document.getElementById(p+'-tab-panel');if(el)el.style.display='none';});
  const active=document.getElementById(tab+'-tab-panel');if(active)active.style.display='block';
  // Toggle action buttons
@@ -3891,6 +4626,9 @@ function showCostTab(tab, btn){
  if(tab==='cost')renderCosts();
  if(tab==='totalbudget')renderTotalBudget();
  if(tab==='inventory')renderInventory();
+ if(tab==='cashflow')renderCashflowChart();
+ if(tab==='scenario')renderScenarioCompare();
+ if(tab==='sensitivity')renderROASSensitivity();
 }
 function showIdeaSubTab(which,btn){
  const panelA=document.getElementById('idea4a-panel');
@@ -6088,6 +6826,10 @@ function load(){
       if(d.prodExpData2)prodExpData2=d.prodExpData2;
       if(d.adExpenseData)adExpenseData=d.adExpenseData;
       if(d.inventoryData)inventoryData=d.inventoryData;
+      if(d.cashflowData)cashflowData=d.cashflowData;
+      if(d.scenarioData)scenarioData=d.scenarioData;
+      if(d.cashflowChartData)cashflowChartData=d.cashflowChartData;
+      if(d.sensitivityData)sensitivityData=d.sensitivityData;
       saveHistory=d.saveHistory||[];
    designData=d.design||{color:'',logo:'',package:''};
    designConcepts=d.designConcepts||[];
