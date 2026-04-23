@@ -375,6 +375,31 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
 .tab-del{display:none;position:absolute;top:2px;right:2px;width:13px;height:13px;border-radius:50%;background:rgba(220,50,50,.85);border:none;color:#FFF;font-size:9px;cursor:pointer;line-height:13px;text-align:center;padding:0;z-index:10}
 .tab-btn{position:relative}
 .tab-btn:hover .tab-del{display:block}
+
+/* Phase 3: 모바일 헤더 반응형 - 스위처 바 줄바꿈 */
+@media (max-width: 768px) {
+ .hub-top-actions {
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+ }
+ .product-switcher-bar {
+  margin-left: 0 !important;
+  width: 100%;
+  order: 99;  /* 다른 버튼들 다음에 배치 */
+ }
+ .product-switcher-bar select {
+  max-width: 100% !important;
+  flex: 1;
+ }
+}
+@media (max-width: 480px) {
+ .product-switcher-bar {
+  font-size: 10px;
+ }
+ .nav-brand-edit {
+  max-width: 140px !important;
+ }
+}
 </style>
 </head>
 <body>
@@ -453,11 +478,11 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
       <span style="font-size:9px;color:rgba(255,255,255,.35);font-weight:500;letter-spacing:.5px;margin-right:6px;padding:2px 6px;background:rgba(255,255,255,.06);border-radius:3px;white-space:nowrap" title="Brand Operating System KIT · Cosmetics Edition v1.0">Brand OS KIT</span>
       <input class="nav-brand-edit" id="hub-name-input" value="MGS 브랜드 허브" onchange="updateHubName(this.value)" title="클릭하여 이름 수정">
     </div>
-    <div style="display:flex;align-items:center;gap:4px;margin-top:4px">
+    <div class="hub-top-actions" style="display:flex;align-items:center;gap:4px;margin-top:4px;flex-wrap:wrap">
       <button onclick="toggleBrandSettings()" title="브랜드 설정" style="background:rgba(255,255,255,.12);border:none;color:rgba(255,255,255,.8);cursor:pointer;font-size:11px;padding:2px 7px;border-radius:4px;line-height:1.4">⚙ 설정</button>
       <span class="save-indicator" id="save-indicator" style="font-size:10px;color:rgba(255,255,255,.5);white-space:nowrap">준비됨</span>
       <!-- Phase 3: 상단 제품 스위처 바 (상시 표시) -->
-      <div id="product-switcher-bar" style="display:none;align-items:center;gap:6px;padding:3px 8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:5px;flex-wrap:wrap;margin-left:8px"></div>
+      <div id="product-switcher-bar" class="product-switcher-bar" style="display:none;align-items:center;gap:6px;padding:3px 8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:5px;flex-wrap:wrap;margin-left:8px;max-width:100%;overflow:hidden"></div>
       <button onclick="showDiagnostic()" title="제품 분리 진단" style="background:rgba(255,255,255,.12);border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:11px;padding:2px 7px;border-radius:4px;line-height:1.4;margin-left:4px">🔍 진단</button>
     </div>
   </div>
@@ -4419,6 +4444,7 @@ function addProduct(){
   const newProductSK = (typeof SK_BASE !== 'undefined' ? SK_BASE : 'epitect-v7') + '__' + newId;
   // 빈 상태의 기본 저장 데이터
   const emptyDataForSK = {
+   _isEmptyProduct: true,
    brands: [], reviews: [], idea: {}, mapPos: {}, mapCustomItems: [],
    costs: [], expenses: [], adSpend: [], adSpendBudget: 0, monthlyAds: {},
    vendors: [], mktPlan: [], progressData: {}, analysis: {}, personas: [],
@@ -8192,8 +8218,10 @@ function load(){
     raw=null;
    }
    if(d){
-   allData=d.brands||[...DD_0,...DD_1,...DD_2,...DD_3];
-   revData=d.reviews||[...DEF_REVIEWS];ideaData=d.idea||{...DEF_IDEA};
+   // Phase 3: 빈 제품 플래그 체크 - 신규 제품엔 기본 경쟁사/리뷰 안 채움
+   const isEmpty = d._isEmptyProduct === true;
+   allData=d.brands||(isEmpty?[]:[...DD_0,...DD_1,...DD_2,...DD_3]);
+   revData=d.reviews||(isEmpty?[]:[...DEF_REVIEWS]);ideaData=d.idea||(isEmpty?{}:{...DEF_IDEA});
    mapPos=d.mapPos||{};mapCustomItems=d.mapCustomItems||[];
    costData=d.costs||[...DEF_COSTS];expenseData=d.expenses||[];
    vendorData=d.vendors||[...DEF_VENDORS];
@@ -8243,7 +8271,7 @@ function load(){
     }
    })();
    adPlans=d.adPlans||[...adPlans];
-   orgData=d.org||JSON.parse(JSON.stringify(orgData));cogsData=d.cogsData||[...DEF_COGS_ROWS];
+   orgData=d.org||JSON.parse(JSON.stringify(orgData));cogsData=d.cogsData||(isEmpty?[]:[...DEF_COGS_ROWS]);
       if(d.roasData&&d.roasData.length)roasData=d.roasData;
       if(d.prodExpenseData)prodExpenseData=d.prodExpenseData;
       if(d.prodExpData2)prodExpData2=d.prodExpData2;
