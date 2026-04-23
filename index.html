@@ -2673,9 +2673,11 @@ function renderTotalBudget(){
  const laborCost = cf.laborCost!==undefined?cf.laborCost:0;
  const outsourceCost = cf.outsourceCost!==undefined?cf.outsourceCost:0;
  const otherSGA = cf.otherSGA!==undefined?cf.otherSGA:0;
- const totalOutflow = laborCost + outsourceCost + otherSGA + grandBudget;
+ const extraItemsArr = Array.isArray(cf.extraItems)?cf.extraItems:[];
+ const extraItemsTotal = extraItemsArr.reduce((s,it)=>s+(parseFloat(it.amount)||0),0);
+ const totalOutflow = laborCost + outsourceCost + otherSGA + extraItemsTotal + grandBudget;
  const remainingCash = availableCash - totalOutflow;
- const monthlyBurn = (laborCost+outsourceCost+otherSGA)/3;
+ const monthlyBurn = (laborCost+outsourceCost+otherSGA+extraItemsTotal)/3;
  const cashRunway = monthlyBurn>0?Math.floor(availableCash/monthlyBurn):0;
 
  // 기준 날짜 계산
@@ -2722,6 +2724,17 @@ function renderTotalBudget(){
  html2+=cfInp('👥 3개월 인건비 (원)','laborCost',laborCost,'본인+직원 3개월 합계');
  html2+=cfInp('🤝 3개월 외주 투자금 (원)','outsourceCost',outsourceCost,'디자인·영상·개발 외주');
  html2+=cfInp('📋 기타 판관비 (원)','otherSGA',otherSGA,'사무실·통신·세무 등');
+ // 커스텀 추가 항목들
+ const extraItems = Array.isArray(cf.extraItems)?cf.extraItems:[];
+ extraItems.forEach((item, idx)=>{
+  html2+='<div style="background:var(--sur);border:1px solid var(--bd);border-left:3px solid #F57F17;border-radius:6px;padding:8px;position:relative">'
+   +'<div style="display:flex;gap:4px;margin-bottom:4px"><input type="text" value="'+(item.name||'').replace(/"/g,'&quot;')+'" oninput="updateExtraItem('+idx+',\'name\',this.value)" placeholder="항목명" style="flex:1;padding:2px 5px;border:1px solid var(--bd);border-radius:3px;font-size:10px;background:var(--bg);color:var(--tx);outline:none;font-family:inherit">'
+   +'<button onclick="removeExtraItem('+idx+')" title="삭제" style="padding:0 6px;border:1px solid #EF9A9A;background:#FFEBEE;color:#C62828;border-radius:3px;cursor:pointer;font-size:10px;line-height:1">✕</button></div>'
+   +'<input type="number" value="'+(item.amount||0)+'" oninput="updateExtraItem('+idx+',\'amount\',parseFloat(this.value)||0)" placeholder="금액" style="width:100%;padding:3px 6px;border:1px solid var(--bd);border-radius:4px;font-size:12px;font-family:var(--mn);text-align:right;background:var(--bg);color:var(--tx);outline:none">'
+   +'<div style="font-size:9px;color:var(--mu);margin-top:2px">커스텀 비용</div></div>';
+ });
+ // + 추가 버튼
+ html2+='<div style="background:var(--bg);border:1px dashed var(--bd);border-radius:6px;padding:8px;display:flex;align-items:center;justify-content:center"><button onclick="addExtraCashflowItem()" style="padding:4px 10px;border:1px solid #F57F17;background:#FFF3E0;color:#E65100;border-radius:4px;cursor:pointer;font-size:11px;font-weight:500;font-family:inherit">+ 비용 항목 추가</button></div>';
  html2+='</div>';
 
  html2+='<div style="background:var(--sur);border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin-top:4px">';
@@ -2730,6 +2743,13 @@ function renderTotalBudget(){
  html2+='<tr style="border-bottom:.5px solid var(--bd)"><td style="padding:5px 12px;color:var(--mu)">  ー 3개월 인건비</td><td style="padding:5px 12px;text-align:right;font-family:var(--mn);color:var(--red)">-'+N(laborCost)+'원</td></tr>';
  html2+='<tr style="border-bottom:.5px solid var(--bd)"><td style="padding:5px 12px;color:var(--mu)">  ー 3개월 외주 투자금</td><td style="padding:5px 12px;text-align:right;font-family:var(--mn);color:var(--red)">-'+N(outsourceCost)+'원</td></tr>';
  html2+='<tr style="border-bottom:.5px solid var(--bd)"><td style="padding:5px 12px;color:var(--mu)">  ー 기타 판관비</td><td style="padding:5px 12px;text-align:right;font-family:var(--mn);color:var(--red)">-'+N(otherSGA)+'원</td></tr>';
+ // 커스텀 항목들 각각 라인
+ extraItemsArr.forEach(it=>{
+  const nm = (it.name||'항목');
+  const am = parseFloat(it.amount)||0;
+  if(am===0 && !it.name) return;
+  html2+='<tr style="border-bottom:.5px solid var(--bd)"><td style="padding:5px 12px;color:var(--mu)">  ー '+nm.replace(/</g,'&lt;')+'</td><td style="padding:5px 12px;text-align:right;font-family:var(--mn);color:var(--red)">-'+N(am)+'원</td></tr>';
+ });
  html2+='<tr style="border-bottom:.5px solid var(--bd)"><td style="padding:5px 12px;color:var(--mu)">  ー 총 런칭 예산 (준비+생산+광고)</td><td style="padding:5px 12px;text-align:right;font-family:var(--mn);color:var(--red)">-'+N(grandBudget)+'원</td></tr>';
  const remainColor = remainingCash<0?'#C62828':(remainingCash<monthlyBurn?'#F57F17':'#2E7D32');
  const remainBg = remainingCash<0?'#FFEBEE':(remainingCash<monthlyBurn?'#FFF8E1':'#E8F5E9');
@@ -2764,6 +2784,30 @@ function updateCashflow(key,val){
  if(typeof sv==='function')sv('현금흐름 입력');
  if(typeof renderTotalBudget==='function')renderTotalBudget();
 }
+
+function addExtraCashflowItem(){
+ if(typeof cashflowData==='undefined') cashflowData={};
+ if(!Array.isArray(cashflowData.extraItems)) cashflowData.extraItems=[];
+ cashflowData.extraItems.push({id:'cfx_'+Date.now(), name:'', amount:0});
+ sv('3개월 현금흐름 비용 항목 추가');
+ if(typeof renderTotalBudget==='function') renderTotalBudget();
+}
+function updateExtraItem(idx, field, value){
+ if(typeof cashflowData==='undefined') cashflowData={};
+ if(!Array.isArray(cashflowData.extraItems)) return;
+ if(!cashflowData.extraItems[idx]) return;
+ cashflowData.extraItems[idx][field] = value;
+ sv('3개월 현금흐름 항목 수정');
+ if(field==='amount' && typeof renderTotalBudget==='function') renderTotalBudget();
+}
+function removeExtraItem(idx){
+ if(!Array.isArray(cashflowData.extraItems)) return;
+ if(!confirm('이 비용 항목을 삭제하시겠습니까?')) return;
+ cashflowData.extraItems.splice(idx,1);
+ sv('3개월 현금흐름 항목 삭제');
+ if(typeof renderTotalBudget==='function') renderTotalBudget();
+}
+
 
 // ━━━━━ 📦 재고자산 · Full Sellout Simulator (t5 서브탭) ━━━━━
 function renderInventory(){
@@ -3248,6 +3292,9 @@ function renderCashflowChart(){
  const cf = (typeof cashflowData!=='undefined'&&cashflowData)?cashflowData:{};
 
  const period = cfc.period||6; // 3/6/12
+ // ━━ 월별 현금흐름 전용 판매가·ROAS (없으면 getInventoryBase 사용) ━━
+ if(cfc.price !== undefined && cfc.price !== null && cfc.price > 0) base.price = cfc.price;
+ if(cfc.targetROAS !== undefined && cfc.targetROAS !== null && cfc.targetROAS > 0) base.targetROAS = cfc.targetROAS;
  const availableCash = cf.availableCash||0;
  const monthlyLabor = (cf.laborCost||0)/3; // 3개월 인건비를 월할
  const monthlyOutsource = (cf.outsourceCost||0)/3;
@@ -3312,6 +3359,28 @@ function renderCashflowChart(){
  });
  h+='<button onclick="resetCashflowChart()" class="btn" style="margin-left:8px">↺</button>';
  h+='</div></div>';
+
+ // ━━ 판매가·ROAS·원가 기준 입력 ━━
+ const _inv = (typeof inventoryData!=='undefined'&&inventoryData)?inventoryData:{};
+ h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;padding:10px;background:var(--bg);border:1px solid var(--bd);border-radius:6px">';
+ // 판매가
+ h+='<div><div style="font-size:10px;color:var(--mu);margin-bottom:3px">💰 판매가 (원)</div>'
+  +'<input type="number" value="'+(base.price||0)+'" oninput="updateCashflowChartBase(\'price\', parseFloat(this.value)||0)" style="width:100%;padding:4px 6px;border:1px solid var(--bd);border-radius:4px;font-size:12px;font-family:var(--mn);text-align:right;background:var(--sur);color:var(--tx);outline:none">'
+  +'<div style="font-size:9px;color:var(--mu);margin-top:2px">'+(cfc.price?'직접 입력':(_inv.price?'재고자산 탭':'ROAS 탭'))+'</div></div>';
+ // 목표 ROAS
+ h+='<div><div style="font-size:10px;color:var(--mu);margin-bottom:3px">🎯 목표 ROAS (%)</div>'
+  +'<input type="number" value="'+(base.targetROAS||300)+'" oninput="updateCashflowChartBase(\'targetROAS\', parseFloat(this.value)||0)" style="width:100%;padding:4px 6px;border:1px solid var(--bd);border-radius:4px;font-size:12px;font-family:var(--mn);text-align:right;background:var(--sur);color:var(--tx);outline:none">'
+  +'<div style="font-size:9px;color:var(--mu);margin-top:2px">'+(cfc.targetROAS?'직접 입력':'재고자산 기본')+'</div></div>';
+ // 단가 (읽기 전용 - 생산원가 탭 자동)
+ h+='<div><div style="font-size:10px;color:var(--mu);margin-bottom:3px">🏭 단가 (VAT포함)</div>'
+  +'<input type="number" value="'+(base.unitCost||0)+'" readonly style="width:100%;padding:4px 6px;border:1px solid var(--bd);border-radius:4px;font-size:12px;font-family:var(--mn);text-align:right;background:#F5F5F5;color:var(--mu);outline:none;cursor:not-allowed">'
+  +'<div style="font-size:9px;color:var(--mu);margin-top:2px">생산원가 자동</div></div>';
+ // 채널+PG 수수료
+ h+='<div><div style="font-size:10px;color:var(--mu);margin-bottom:3px">💳 채널+PG (%)</div>'
+  +'<input type="number" value="'+((base.channelFee||0)+(base.pgFee||0)).toFixed(1)+'" readonly style="width:100%;padding:4px 6px;border:1px solid var(--bd);border-radius:4px;font-size:12px;font-family:var(--mn);text-align:right;background:#F5F5F5;color:var(--mu);outline:none;cursor:not-allowed">'
+  +'<div style="font-size:9px;color:var(--mu);margin-top:2px">재고자산 자동</div></div>';
+ h+='</div>';
+
  h+='<div style="font-size:10px;color:var(--mu);line-height:1.6">💡 기본 곡선: S자 성장 (월 1→2→3···로 점진 상승). 각 월 판매량은 표에서 직접 수정 가능. 매달 고정비(인건비+외주+판관비 ÷ 3)가 차감됩니다.</div>';
  h+='</div>';
 
@@ -3454,6 +3523,15 @@ function updateCashflowPeriod(p){
  if(typeof sv==='function')sv('현금흐름 기간');
  renderCashflowChart();
 }
+
+function updateCashflowChartBase(field, value){
+ if(typeof cashflowChartData==='undefined') cashflowChartData={};
+ cashflowChartData[field] = value;
+ // price나 targetROAS 바뀌면 자동 곡선 재계산 위해 monthlyQty 초기화 옵션
+ sv('월별 현금흐름 '+field+' 수정');
+ if(typeof renderCashflowChart==='function') renderCashflowChart();
+}
+
 function updateMonthlyQty(idx,val){
  if(typeof cashflowChartData==='undefined')window.cashflowChartData={};
  const period=cashflowChartData.period||6;
