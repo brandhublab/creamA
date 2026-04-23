@@ -881,6 +881,7 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
     <button class="stab" onclick="showCostTab('adexp',this)">📢 지출-광고비</button>
     <button class="stab" onclick="showCostTab('allexp',this)">📋 지출-전체</button>
     <button class="stab" onclick="showCostTab('totalbudget',this)" style="border-left:2px solid var(--bd);padding-left:14px">💎 총 예산</button>
+    <button class="stab" onclick="showCostTab('inventory',this)">📦 재고자산</button>
   </div>
   <div id="cost-tab-panel">
 <div style="padding:12px 18px">
@@ -1207,6 +1208,14 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
     <div class="sec-head"><h3>💎 총 예산 대시보드</h3><span style="font-size:10px;color:var(--mu)">총 예산 − 총 지출 = 총 잔여 예산 (카테고리·항목별 세부 보기)</span></div>
     <div class="sec-body" id="totalbudget-wrap">
       <div style="padding:20px;text-align:center;color:var(--hi);font-size:12px">총 예산 데이터를 종합하여 표시합니다.</div>
+    </div>
+  </div>
+</div>
+<div id="inventory-tab-panel" style="display:none;padding:14px 18px">
+  <div class="section" style="margin:0">
+    <div class="sec-head"><h3>📦 재고자산 · Full Sellout Simulator</h3><span style="font-size:10px;color:var(--mu)">재고 전량 판매 시 최종 순이익을 재무제표 형식으로 시뮬레이션</span></div>
+    <div class="sec-body" id="inventory-wrap">
+      <div style="padding:20px;text-align:center;color:var(--hi);font-size:12px">재고자산 시뮬레이션을 로딩합니다...</div>
     </div>
   </div>
 </div>
@@ -2246,7 +2255,8 @@ function sv(label){
    ingrData:_g(typeof ingrData!=='undefined'?ingrData:null,null),
    mechanismTitle:_g(typeof mechanismTitle!=='undefined'?mechanismTitle:null,''),
    brandIdeaData:_g(typeof brandIdeaData!=='undefined'?brandIdeaData:null,null),
-   brandChecksData:_g(typeof brandChecksData!=='undefined'?brandChecksData:null,null)
+   brandChecksData:_g(typeof brandChecksData!=='undefined'?brandChecksData:null,null),
+   inventoryData:_g(typeof inventoryData!=='undefined'?inventoryData:null,{})
   };
   const snapStr=JSON.stringify(snap);
   // Try to save; if quota exceeded, strip heavy arrays and retry
@@ -2440,6 +2450,7 @@ function renderAllExpenses(){
   </table>`;
 }
 
+let inventoryData={};
 function renderTotalBudget(){
  const wrap=document.getElementById('totalbudget-wrap');if(!wrap)return;
  const N=n=>(n||0).toLocaleString('ko-KR');
@@ -2584,6 +2595,234 @@ function renderTotalBudget(){
  html2+='</div>';
  wrap.innerHTML=html2;
 }
+
+// ━━━━━ 📦 재고자산 · Full Sellout Simulator (t5 서브탭) ━━━━━
+function renderInventory(){
+ const wrap=document.getElementById('inventory-wrap');if(!wrap)return;
+ const N=n=>(Math.round(n||0)).toLocaleString('ko-KR');
+ const inv = (typeof inventoryData!=='undefined'&&inventoryData)?inventoryData:{};
+
+ // ━━━ 기본값 자동 연동 ━━━
+ // 1) 재고 수량: cogsData의 "충진" 또는 "완제품" 행의 prodQty 우선 → 없으면 최대값
+ let autoStock=0;
+ if(typeof cogsData!=='undefined' && Array.isArray(cogsData) && cogsData.length){
+  const fillRow=cogsData.find(r=>/(충진|완제품|완성|final|fill)/i.test(r.name||''));
+  if(fillRow) autoStock=fillRow.prodQty||0;
+  else autoStock=Math.min(...cogsData.map(r=>r.prodQty||Infinity).filter(v=>v!==Infinity && v>0))||0;
+ }
+ // 2) 판매가: roas-price2에서 가져오거나, 저장된 값
+ let autoPrice=0;
+ const priceEl=document.getElementById('roas-price2');
+ if(priceEl) autoPrice=parseFloat(priceEl.value)||0;
+ if(!autoPrice && inv.price) autoPrice=inv.price;
+ // 3) 생산 원가 (단위당): cogsData 합계 × 1.1 (VAT)
+ let unitCost=0;
+ if(typeof cogsData!=='undefined' && Array.isArray(cogsData)){
+  const totalUnit=cogsData.reduce((s,r)=>s+((r.unitPrice||r.amount)||0),0);
+  unitCost=Math.round(totalUnit*1.1);
+ }
+
+ // ━━━ 사용자 입력값 (저장된 값 우선) ━━━
+ const stock = (inv.stock!==undefined)?inv.stock:autoStock;
+ const price = (inv.price!==undefined)?inv.price:autoPrice;
+ const channelFee = (inv.channelFee!==undefined)?inv.channelFee:10.8; // %
+ const pgFee = (inv.pgFee!==undefined)?inv.pgFee:2.9; // %
+ const shipPerUnit = (inv.shipPerUnit!==undefined)?inv.shipPerUnit:3000; // 원/건
+ const targetROAS = (inv.targetROAS!==undefined)?inv.targetROAS:300; // %
+ const opexPerUnit = (inv.opexPerUnit!==undefined)?inv.opexPerUnit:0; // 원/건 기타 판관비
+ const opexTotal = (inv.opexTotal!==undefined)?inv.opexTotal:0; // 원 일괄 판관비
+ const corpTaxRate = (inv.corpTaxRate!==undefined)?inv.corpTaxRate:9; // % (2억 이하 9%)
+
+ // ━━━ 단계별 계산 (Top-Down Waterfall) ━━━
+ const grossRevenue = stock * price;                              // ① 예상 매출
+ const channelFeeAmt = Math.round(grossRevenue * channelFee/100); // 채널 수수료
+ const pgFeeAmt = Math.round(grossRevenue * pgFee/100);           // 결제 수수료
+ const shipTotal = stock * shipPerUnit;                           // 택배비
+ const netRevenue = grossRevenue - channelFeeAmt - pgFeeAmt - shipTotal; // ② 순매출
+
+ const cogsTotal = stock * unitCost;                              // 생산 원가
+ const grossProfit = netRevenue - cogsTotal;                       // ③ 매출총이익
+ const grossMargin = grossRevenue?Math.round(grossProfit/grossRevenue*1000)/10:0;
+
+ // 광고비 (ROAS 역산: 광고비 = 매출 / ROAS × 100)
+ const adSpend = targetROAS?Math.round(grossRevenue/targetROAS*100):0;
+ const opexCalcTotal = stock * opexPerUnit + opexTotal;            // 기타 판관비 합
+ const operatingProfit = grossProfit - adSpend - opexCalcTotal;    // ④ 영업이익
+ const operatingMargin = grossRevenue?Math.round(operatingProfit/grossRevenue*1000)/10:0;
+
+ // 세금 (간이 계산)
+ // 매입VAT: 원가·광고비·판관비에 숨어있는 VAT 환급 가능분 추정 (10/11)
+ const inputVAT = Math.round((cogsTotal + adSpend + opexCalcTotal) / 11);
+ const outputVAT = Math.round(grossRevenue / 11); // 매출 VAT (매출의 1/11)
+ const vatPayable = Math.max(0, outputVAT - inputVAT);
+ // 법인세: 영업이익 기준 (음수면 0)
+ const corpTax = Math.max(0, Math.round(operatingProfit * corpTaxRate/100));
+ const netProfit = operatingProfit - vatPayable - corpTax;         // ⑤ 순이익
+ const netMargin = grossRevenue?Math.round(netProfit/grossRevenue*1000)/10:0;
+
+ // 손익분기점: 판매가 유지할 때 영업이익 0 되는 최소 수량
+ // (판매가 - 채널·결제수수료·택배비 - 원가 - 광고비/개 - 판관비/개) 를 초과해야 함
+ const perUnitNet = price - Math.round(price*(channelFee+pgFee)/100) - shipPerUnit - unitCost - opexPerUnit;
+ const adPerUnit = targetROAS?Math.round(price/targetROAS*100):0;
+ const contribPerUnit = perUnitNet - adPerUnit;
+ const fixedCostForBE = opexTotal; // 고정비만
+ const breakEvenQty = contribPerUnit>0 ? Math.ceil(fixedCostForBE/contribPerUnit) : 0;
+
+ // ━━━ UI 렌더링 ━━━
+ const CLR={blue:'#1565C0',green:'#2E7D32',amber:'#F57F17',red:'#C62828',purple:'#6A1B9A'};
+ let h='';
+
+ // ━━━ 입력 패널 ━━━
+ h+='<div style="background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:16px">';
+ h+='<div style="font-size:12px;font-weight:600;color:var(--tx);margin-bottom:10px">⚙️ 입력값 · 자동 연동 포함</div>';
+ h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px">';
+ h+=inpCell('재고 수량 (개)','stock',stock,'생산 탭 "충진" 자동');
+ h+=inpCell('판매가 (원)','price',price,'ROAS 탭 판매가 자동');
+ h+=inpCell('채널 수수료 (%)','channelFee',channelFee,'쿠팡 10.8 · NSS 3.74');
+ h+=inpCell('결제 수수료 (%)','pgFee',pgFee,'PG 일반 2.9');
+ h+='</div>';
+ h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px">';
+ h+=inpCell('택배비 (원/건)','shipPerUnit',shipPerUnit,'편의점·우체국');
+ h+=inpCell('목표 ROAS (%)','targetROAS',targetROAS,'광고비 = 매출/ROAS×100');
+ h+=inpCell('개당 판관비 (원)','opexPerUnit',opexPerUnit,'포장재·부자재');
+ h+=inpCell('고정 판관비 (원)','opexTotal',opexTotal,'인건비·서버 등');
+ h+='</div>';
+ h+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">';
+ h+=inpCell('법인세율 (%)','corpTaxRate',corpTaxRate,'2억 이하 9 / 2억 초과 19');
+ h+='<div style="display:flex;align-items:flex-end;gap:6px">';
+ h+='<button class="btn pri" onclick="autoFillInventoryFromCogs()" style="flex:1">🔄 생산탭 자동 연동</button>';
+ h+='<button class="btn" onclick="resetInventory()" title="초기값 복원">↺</button>';
+ h+='</div>';
+ h+='</div></div>';
+
+ // ━━━ 요약 KPI 카드 4개 ━━━
+ h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">';
+ h+=kpiCard('💰 예상 매출', N(grossRevenue)+'원', CLR.blue, '#E3F2FD', stock+'개 × '+N(price)+'원');
+ h+=kpiCard('💎 매출총이익', N(grossProfit)+'원', grossProfit>=0?CLR.green:CLR.red, '#E8F5E9', '마진율 '+grossMargin+'%');
+ h+=kpiCard('🏆 영업이익', N(operatingProfit)+'원', operatingProfit>=0?CLR.amber:CLR.red, '#FFF8E1', '마진율 '+operatingMargin+'%');
+ h+=kpiCard('💵 순이익', N(netProfit)+'원', netProfit>=0?CLR.purple:CLR.red, '#F3E5F5', '마진율 '+netMargin+'%');
+ h+='</div>';
+
+ // ━━━ 재무제표 폭포 (Waterfall) ━━━
+ h+='<div style="background:var(--sur);border:1px solid var(--bd);border-radius:10px;overflow:hidden;margin-bottom:16px">';
+ h+='<div style="padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--bd);font-size:12px;font-weight:600">📋 손익 폭포 · Income Waterfall</div>';
+ h+='<table style="width:100%;border-collapse:collapse;font-size:12px">';
+ h+='<thead><tr style="background:var(--bg);border-bottom:1px solid var(--bd);color:var(--mu);font-size:10px"><th style="padding:6px 12px;text-align:left">단계</th><th style="padding:6px 12px;text-align:right">금액</th><th style="padding:6px 12px;text-align:right;width:80px">비율</th><th style="padding:6px 12px;text-align:left;color:var(--mu)">계산</th></tr></thead>';
+ h+='<tbody>';
+ // 1단계 매출
+ h+=wrow('💰 예상 매출 (Gross Revenue)',grossRevenue,grossRevenue,CLR.blue,'재고 '+N(stock)+'개 × 판매가 '+N(price)+'원',true);
+ // 차감
+ h+=wrow('  ー 채널 수수료 ('+channelFee+'%)',-channelFeeAmt,grossRevenue,CLR.red,'매출 × '+channelFee+'%');
+ h+=wrow('  ー 결제 수수료 ('+pgFee+'%)',-pgFeeAmt,grossRevenue,CLR.red,'매출 × '+pgFee+'%');
+ h+=wrow('  ー 택배비','-'+N(shipTotal),grossRevenue,CLR.red,N(stock)+'개 × '+N(shipPerUnit)+'원',false,-shipTotal);
+ // 2단계 순매출
+ h+=wrow('📦 순매출 (Net Revenue)',netRevenue,grossRevenue,CLR.blue,'매출 − 수수료 − 택배',true);
+ // 원가 차감
+ h+=wrow('  ー 생산 원가 (COGS, VAT포함)',-cogsTotal,grossRevenue,CLR.red,N(stock)+'개 × '+N(unitCost)+'원');
+ // 3단계 매출총이익
+ h+=wrow('💎 매출총이익 (Gross Profit)',grossProfit,grossRevenue,grossProfit>=0?CLR.green:CLR.red,'마진율 '+grossMargin+'%',true);
+ // 광고·판관
+ h+=wrow('  ー 광고비 (ROAS '+targetROAS+'%)',-adSpend,grossRevenue,CLR.red,'매출 ÷ ROAS × 100');
+ h+=wrow('  ー 기타 판관비',-opexCalcTotal,grossRevenue,CLR.red,(opexPerUnit?N(stock)+'개×'+N(opexPerUnit)+'원':'')+(opexPerUnit&&opexTotal?' + ':'')+(opexTotal?'고정 '+N(opexTotal)+'원':''));
+ // 4단계 영업이익
+ h+=wrow('🏆 영업이익 (Operating Profit)',operatingProfit,grossRevenue,operatingProfit>=0?CLR.amber:CLR.red,'마진율 '+operatingMargin+'%',true);
+ // 세금
+ h+=wrow('  ー 부가세 (VAT 납부)',-vatPayable,grossRevenue,CLR.red,'매출VAT '+N(outputVAT)+' − 매입VAT '+N(inputVAT));
+ h+=wrow('  ー 법인세 ('+corpTaxRate+'%)',-corpTax,grossRevenue,CLR.red,'영업이익 × '+corpTaxRate+'%');
+ // 5단계 순이익
+ h+=wrow('💵 순이익 (Net Profit)',netProfit,grossRevenue,netProfit>=0?CLR.purple:CLR.red,'마진율 '+netMargin+'%',true);
+ h+='</tbody></table></div>';
+
+ // ━━━ 핵심 인사이트 ━━━
+ h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
+ // 좌: 핵심 숫자
+ h+='<div style="background:#E3F2FD;border:1px solid #90CAF9;border-left:4px solid '+CLR.blue+';border-radius:8px;padding:12px">';
+ h+='<div style="font-size:11px;font-weight:600;color:'+CLR.blue+';margin-bottom:8px">🎯 핵심 질문에 답하기</div>';
+ h+='<div style="font-size:11px;line-height:1.8;color:var(--tx)">';
+ h+='<b>Q. 재고를 다 팔면 최종 얼마 버나?</b><br>';
+ h+='→ <b style="color:'+(netProfit>=0?CLR.green:CLR.red)+';font-family:var(--mn);font-size:13px">'+N(netProfit)+'원</b> (순이익률 '+netMargin+'%)<br><br>';
+ h+='<b>Q. 이 재고를 다 팔려면 광고비가 얼마 필요?</b><br>';
+ h+='→ <b style="font-family:var(--mn);font-size:13px">'+N(adSpend)+'원</b> (ROAS '+targetROAS+'% 기준)<br><br>';
+ h+='<b>Q. 총 수수료는?</b><br>';
+ h+='→ <b style="font-family:var(--mn)">'+N(channelFeeAmt+pgFeeAmt)+'원</b> (채널+결제)<br><br>';
+ h+='<b>Q. 단위당 실질 이익?</b><br>';
+ h+='→ <b style="font-family:var(--mn)">'+N(stock?Math.round(netProfit/stock):0)+'원/개</b>';
+ h+='</div></div>';
+ // 우: 수익 구조 분석
+ h+='<div style="background:#FFF8E1;border:1px solid #FFD54F;border-left:4px solid '+CLR.amber+';border-radius:8px;padding:12px">';
+ h+='<div style="font-size:11px;font-weight:600;color:'+CLR.amber+';margin-bottom:8px">📊 수익 구조 분석</div>';
+ h+='<div style="font-size:11px;line-height:1.8">';
+ const pct=(v)=>grossRevenue?((v/grossRevenue)*100).toFixed(1):0;
+ h+='<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:.5px dashed var(--bd)"><span>채널+결제 수수료</span><b style="font-family:var(--mn);color:'+CLR.red+'">'+pct(channelFeeAmt+pgFeeAmt)+'%</b></div>';
+ h+='<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:.5px dashed var(--bd)"><span>택배비</span><b style="font-family:var(--mn);color:'+CLR.red+'">'+pct(shipTotal)+'%</b></div>';
+ h+='<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:.5px dashed var(--bd)"><span>생산원가</span><b style="font-family:var(--mn);color:'+CLR.red+'">'+pct(cogsTotal)+'%</b></div>';
+ h+='<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:.5px dashed var(--bd)"><span>광고비</span><b style="font-family:var(--mn);color:'+CLR.red+'">'+pct(adSpend)+'%</b></div>';
+ h+='<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:.5px dashed var(--bd)"><span>판관비</span><b style="font-family:var(--mn);color:'+CLR.red+'">'+pct(opexCalcTotal)+'%</b></div>';
+ h+='<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:.5px dashed var(--bd)"><span>세금</span><b style="font-family:var(--mn);color:'+CLR.red+'">'+pct(vatPayable+corpTax)+'%</b></div>';
+ h+='<div style="display:flex;justify-content:space-between;padding:5px 0;margin-top:4px;border-top:2px solid var(--bd)"><span style="font-weight:600">최종 순이익률</span><b style="font-family:var(--mn);color:'+(netProfit>=0?CLR.green:CLR.red)+';font-size:13px">'+netMargin+'%</b></div>';
+ h+='</div></div>';
+ h+='</div>';
+
+ // ━━━ 교육적 경고 문구 ━━━
+ h+='<div style="margin-top:14px;padding:10px 12px;background:#F5F5F5;border-radius:6px;font-size:10px;color:var(--mu);line-height:1.6">';
+ h+='⚠️ <b>주의:</b> 위 계산은 시뮬레이션입니다. 실제 부가세는 매입세액 상세 증빙에 따라 차이가 크며, 법인세는 공제 항목(R&D·고용·투자세액공제 등)에 따라 다릅니다. 재고 100% 판매 가정이므로 실무에서는 판매 속도·재고 회전·할인 전환율도 반영해야 합니다.';
+ h+='</div>';
+
+ wrap.innerHTML=h;
+
+ // 헬퍼 함수
+ function inpCell(label,key,val,hint){
+  return '<div><label style="font-size:10px;color:var(--mu);display:block;margin-bottom:3px">'+label+'</label>'+
+   '<input type="number" value="'+val+'" onchange="updateInventory(\''+key+'\',this.value)" style="width:100%;padding:5px 8px;border:1px solid var(--bd);border-radius:5px;font-size:12px;font-family:var(--mn);background:var(--sur);color:var(--tx);outline:none">'+
+   '<div style="font-size:9px;color:var(--mu);margin-top:2px">'+hint+'</div></div>';
+ }
+ function kpiCard(label,value,color,bg,sub){
+  return '<div style="background:'+bg+';border:2px solid '+color+'30;border-radius:10px;padding:12px">'+
+   '<div style="font-size:10px;color:'+color+';margin-bottom:4px;font-weight:500">'+label+'</div>'+
+   '<div style="font-size:18px;font-weight:700;font-family:var(--mn);color:'+color+';line-height:1.2">'+value+'</div>'+
+   '<div style="font-size:9px;color:var(--mu);margin-top:3px">'+sub+'</div></div>';
+ }
+ function wrow(label,val,base,color,memo,bold,rawVal){
+  const valN = (typeof val==='number')?val:parseInt(String(val).replace(/[^\-0-9]/g,''))||0;
+  const pct = base?((Math.abs(valN)/base)*100).toFixed(1):0;
+  const fmt = (typeof val==='string')?val:(val<0?'-':'')+N(Math.abs(val))+'원';
+  const weight = bold?'600':'400';
+  const bg = bold?'background:'+color+'10;':'';
+  return '<tr style="border-bottom:.5px solid var(--bd);'+bg+'">'+
+   '<td style="padding:6px 12px;font-weight:'+weight+';color:'+(bold?color:'var(--tx)')+'">'+label+'</td>'+
+   '<td style="padding:6px 12px;text-align:right;font-family:var(--mn);font-weight:'+weight+';color:'+color+'">'+fmt+'</td>'+
+   '<td style="padding:6px 12px;text-align:right;font-family:var(--mn);color:var(--mu);font-size:10px">'+pct+'%</td>'+
+   '<td style="padding:6px 12px;font-size:10px;color:var(--mu)">'+memo+'</td></tr>';
+ }
+}
+
+function updateInventory(key,val){
+ if(typeof inventoryData==='undefined')window.inventoryData={};
+ const num=parseFloat(val);
+ inventoryData[key]=isNaN(num)?0:num;
+ if(typeof sv==='function')sv('재고자산 입력');
+ renderInventory();
+}
+
+function autoFillInventoryFromCogs(){
+ if(typeof inventoryData==='undefined')window.inventoryData={};
+ // 강제 재계산: 저장된 값 지우고 재연동
+ delete inventoryData.stock;
+ delete inventoryData.price;
+ if(typeof sv==='function')sv('재고자산 자동연동');
+ renderInventory();
+ if(typeof showToast==='function')showToast('🔄 생산탭·ROAS탭 값으로 재연동','grn');
+}
+
+function resetInventory(){
+ if(!confirm('모든 입력값을 초기값으로 되돌립니다. 계속할까요?'))return;
+ window.inventoryData={};
+ if(typeof sv==='function')sv('재고자산 초기화');
+ renderInventory();
+ if(typeof showToast==='function')showToast('↺ 재고자산 초기화','grn');
+}
+
+
 
 function calcROAS(){
  const price=parseFloat(document.getElementById('roas-price')?.value)||40000;
@@ -3626,7 +3865,7 @@ function saveIdea(){sv();buildIdea();buildIdeaIngredients();showToast('아이디
 // COSTS (t5)
 // ============================================================
 function showCostTab(tab, btn){
- const panels=['cost','expense','adspend','monthly','prod','roas','allexp','adexp','prodexp','totalbudget'];
+ const panels=['cost','expense','adspend','monthly','prod','roas','allexp','adexp','prodexp','totalbudget','inventory'];
  panels.forEach(p=>{const el=document.getElementById(p+'-tab-panel');if(el)el.style.display='none';});
  const active=document.getElementById(tab+'-tab-panel');if(active)active.style.display='block';
  // Toggle action buttons
@@ -3651,6 +3890,7 @@ function showCostTab(tab, btn){
  if(tab==='prodexp'){renderProdExpRows2();}
  if(tab==='cost')renderCosts();
  if(tab==='totalbudget')renderTotalBudget();
+ if(tab==='inventory')renderInventory();
 }
 function showIdeaSubTab(which,btn){
  const panelA=document.getElementById('idea4a-panel');
@@ -3771,6 +4011,18 @@ function calcAdBudget(){
  const months=parseInt(document.getElementById('ad-months')?document.getElementById('ad-months').value:1)||1;
  const total=(meta+google+spon+other)*months;
  const el=document.getElementById('ad-total');if(el)el.value=N(total)+'원';
+ // ━━━ FIX: 전역 adSpendBudget 저장 + hubSettings에 입력값 영속화 ━━━
+ if(typeof adSpendBudget!=='undefined')adSpendBudget=total;
+ if(typeof hubSettings!=='undefined'){
+  if(!hubSettings.adBudgetInputs)hubSettings.adBudgetInputs={};
+  hubSettings.adBudgetInputs={meta,google,spon,other,months};
+ }
+ if(typeof sv==='function')sv('초기 광고예산');
+ // 총예산 탭이 열려있으면 즉시 재렌더
+ if(typeof renderTotalBudget==='function'){
+  const tbWrap=document.getElementById('totalbudget-wrap');
+  if(tbWrap&&tbWrap.offsetParent!==null)renderTotalBudget();
+ }
 }
 // Expense functions
 function updateExpSummary(){
@@ -5742,7 +5994,15 @@ function saveDetailPage(){sv();showToast('상세페이지 저장 완료');}
 // UPDATE RERENDERALL TO INCLUDE NEW TABS
 // ============================================================
 function rerenderAll(){
- renderBrands();stats();buildMap();buildReviews();buildIdea();renderCosts();calcAdBudget();
+ renderBrands();stats();buildMap();buildReviews();buildIdea();renderCosts();
+ // ━━━ FIX: 저장된 광고예산 입력값을 UI에 복원 ━━━
+ if(typeof hubSettings!=='undefined' && hubSettings && hubSettings.adBudgetInputs){
+  const ab=hubSettings.adBudgetInputs;
+  const setV=(id,v)=>{const el=document.getElementById(id);if(el&&v!==undefined&&v!==null)el.value=v;};
+  setV('ad-meta',ab.meta);setV('ad-google',ab.google);setV('ad-spon',ab.spon);
+  setV('ad-other',ab.other);setV('ad-months',ab.months);
+ }
+ calcAdBudget();
  renderExpenses();renderPersonas();renderVendors();calcROAS();buildMktPlan();buildProgress();
  populateAnalysis();buildDevForms();buildWIG();buildDesignConcepts();buildDetailPage();buildIdeaIngredients();renderDeadlineSummary();
  renderCogsTable();restoreMapAxisLabels();renderSaveHist();
@@ -5827,6 +6087,7 @@ function load(){
       if(d.prodExpenseData)prodExpenseData=d.prodExpenseData;
       if(d.prodExpData2)prodExpData2=d.prodExpData2;
       if(d.adExpenseData)adExpenseData=d.adExpenseData;
+      if(d.inventoryData)inventoryData=d.inventoryData;
       saveHistory=d.saveHistory||[];
    designData=d.design||{color:'',logo:'',package:''};
    designConcepts=d.designConcepts||[];
