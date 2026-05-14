@@ -105,7 +105,9 @@ tr:hover td{background:#F7F6F2}
 /* === SUBTABS === */
 .subtab-nav{display:flex;border-bottom:1px solid var(--bd);background:var(--bg);padding:0 18px;overflow-x:auto;gap:2px}
 .stab{padding:8px 12px;font-size:11px;font-weight:500;border:none;background:transparent;cursor:pointer;color:var(--mu);font-family:var(--sa);border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s}
-.stab:hover{color:var(--tx)}.stab.act{color:var(--acc);border-bottom-color:var(--acc)}
+.stab:hover{color:var(--tx)}.stab-del{display:inline-block;margin-left:6px;padding:0 4px;font-size:11px;color:rgba(0,0,0,.4);cursor:pointer;border-radius:3px;line-height:1}
+.stab-del:hover{color:#C0392B;background:rgba(192,57,43,.1)}
+.stab.act{color:var(--acc);border-bottom-color:var(--acc)}
 .stab-name-edit{background:transparent;border:none;color:inherit;font-family:var(--sa);font-size:11px;font-weight:500;cursor:text;outline:none;max-width:80px}
 .subtab-pane{display:none}.subtab-pane.act{display:block}
 
@@ -508,6 +510,7 @@ select.sm{padding:5px 7px;border:1px solid var(--bd);border-radius:5px;font-fami
       <button class="tab-btn" onclick="showTab('t19',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">🧠 설득심리·카피</span><button class="tab-del" onclick="deleteTabByBtn(this,'t19',event)">✕</button></button>
       <button class="tab-btn" onclick="showTab('t18',this)"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">🔬 임상체크</span><button class="tab-del" onclick="deleteTabByBtn(this,'t18',event)">✕</button></button>
       <button class="tab-btn" onclick="showTab('t20',this);initCalendarTab()"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">📅 캘린더</span><button class="tab-del" onclick="deleteTabByBtn(this,'t20',event)">✕</button></button>
+      <button class="tab-btn" onclick="showTab('t21',this);initInfoStorage()"><span class="tab-name-edit" contenteditable="true" onblur="this.textContent=this.textContent.trim()">📦 정보저장소</span><button class="tab-del" onclick="deleteTabByBtn(this,'t21',event)">✕</button></button>
       <button class="tab-btn" onclick="document.getElementById('save-hist-wrap').style.display=document.getElementById('save-hist-wrap').style.display==='none'?'block':'none';updateSaveSizeLabel()" style="color:rgba(255,255,255,.6)"><span>💾 저장관리</span></button>
     </div>
     <button class="tab-btn" onclick="showTab('t6',this)" id="t6-nav-btn" style="display:none"><span>⑥ 페르소나</span></button>
@@ -5600,7 +5603,167 @@ function doSort(){
  else if(v==='rating')filtered.sort((a,b)=>(b.rating||0)-(a.rating||0));
  if(currentView==='table')renderBrandTable();else renderBrandCards();
 }
-function addBrandSubTab(){showToast('탭 이름을 직접 클릭하여 수정하세요','grn')}
+function addBrandSubTab(){
+  var nav = document.getElementById('brand-subtab-nav');
+  if(!nav) return;
+  // 현재 탭 개수
+  var existingTabs = nav.querySelectorAll('.stab');
+  var newIdx = existingTabs.length;
+  
+  // 새 탭 이름 입력받기
+  var name = prompt('새 탭 이름을 입력하세요:', '새 탭 ' + (newIdx + 1));
+  if(name === null || !name.trim()) return;
+  name = name.trim();
+  
+  // + 탭 추가 버튼 찾기
+  var addBtn = nav.querySelector('.stab[onclick*="addBrandSubTab"]');
+  if(!addBtn) return;
+  
+  // 새 탭 버튼 생성 (삭제 버튼 포함)
+  var newTab = document.createElement('button');
+  newTab.className = 'stab';
+  newTab.setAttribute('onclick', 'showBrandTab(' + newIdx + ',this)');
+  newTab.innerHTML = '<span class="stab-name-edit" contenteditable="true">' + escapeHtml(name) + '</span>' +
+                     '<span class="stab-del" onclick="event.stopPropagation();deleteBrandSubTab(' + newIdx + ',this)" title="탭 삭제">×</span>';
+  
+  // + 탭 추가 버튼 앞에 삽입
+  nav.insertBefore(newTab, addBtn);
+  
+  // 브랜드 추가 모달의 select 옵션도 갱신
+  syncBrandSubtabOptions();
+  
+  // 새 탭으로 자동 전환
+  showBrandTab(newIdx, newTab);
+  
+  showToast('새 탭 "' + name + '" 추가됨','grn');
+  saveBrandSubtabs();
+}
+
+// 브랜드 추가 모달 select 옵션 동기화
+function syncBrandSubtabOptions(){
+  var sel = document.getElementById('msubtab');
+  var nav = document.getElementById('brand-subtab-nav');
+  if(!sel || !nav) return;
+  var stabs = nav.querySelectorAll('.stab:not([onclick*="addBrandSubTab"])');
+  var currentVal = sel.value;
+  sel.innerHTML = '';
+  stabs.forEach(function(stab, i){
+    var nameEl = stab.querySelector('.stab-name-edit');
+    var name = nameEl ? nameEl.textContent.trim() : ('탭 ' + (i+1));
+    var opt = document.createElement('option');
+    opt.value = String(i);
+    opt.textContent = name;
+    sel.appendChild(opt);
+  });
+  if(currentVal) sel.value = currentVal;
+}
+
+// 탭 삭제
+function deleteBrandSubTab(idx, delBtn){
+  // 기본 5개 탭은 삭제 못하게
+  if(idx < 5){
+    showToast('기본 탭은 삭제할 수 없습니다','red');
+    return;
+  }
+  var nav = document.getElementById('brand-subtab-nav');
+  if(!nav) return;
+  var stabs = nav.querySelectorAll('.stab:not([onclick*="addBrandSubTab"])');
+  if(idx >= stabs.length) return;
+  
+  var tabName = stabs[idx].querySelector('.stab-name-edit')?.textContent || '탭';
+  // 해당 탭에 브랜드가 있는지 확인
+  var hasItems = false;
+  try {
+    hasItems = (typeof allData !== 'undefined' && allData.some(function(d){ return d.subtab === idx; }));
+  } catch(e){}
+  
+  var msg = '"' + tabName + '" 탭을 삭제하시겠습니까?';
+  if(hasItems) msg += '\n\n⚠ 이 탭에 등록된 브랜드들은 첫 번째 탭(인덱스 0)으로 이동됩니다.';
+  if(!confirm(msg)) return;
+  
+  // 해당 탭의 브랜드들을 subtab=0으로 이동
+  try {
+    if(typeof allData !== 'undefined'){
+      allData.forEach(function(d){ if(d.subtab === idx) d.subtab = 0; });
+      // 더 큰 인덱스 탭들은 인덱스 -1
+      allData.forEach(function(d){ if(d.subtab > idx) d.subtab -= 1; });
+      if(typeof sv === 'function') sv();
+    }
+  } catch(e){ console.error('데이터 이동 실패', e); }
+  
+  // 탭 제거
+  stabs[idx].remove();
+  
+  // 남은 탭들의 인덱스 onclick 재할당
+  var newStabs = nav.querySelectorAll('.stab:not([onclick*="addBrandSubTab"])');
+  newStabs.forEach(function(stab, i){
+    stab.setAttribute('onclick', 'showBrandTab(' + i + ',this)');
+    var del = stab.querySelector('.stab-del');
+    if(del && i >= 5) del.setAttribute('onclick', 'event.stopPropagation();deleteBrandSubTab(' + i + ',this)');
+  });
+  
+  syncBrandSubtabOptions();
+  
+  // 첫 탭으로 전환
+  if(currentBrandTab === idx || currentBrandTab >= newStabs.length){
+    var firstTab = newStabs[0];
+    if(firstTab) showBrandTab(0, firstTab);
+  } else if(currentBrandTab > idx){
+    currentBrandTab -= 1;
+  }
+  
+  saveBrandSubtabs();
+  showToast('탭 삭제됨','grn');
+}
+
+// 사용자 추가 탭 정보 localStorage 저장 (이름 + 인덱스)
+function saveBrandSubtabs(){
+  var nav = document.getElementById('brand-subtab-nav');
+  if(!nav) return;
+  var stabs = nav.querySelectorAll('.stab:not([onclick*="addBrandSubTab"])');
+  var extra = [];
+  stabs.forEach(function(stab, i){
+    if(i >= 5){  // 기본 5개 이후만 저장
+      var name = stab.querySelector('.stab-name-edit')?.textContent.trim() || ('탭 ' + (i+1));
+      extra.push({idx:i, name:name});
+    }
+  });
+  try {
+    localStorage.setItem('bos_extra_brand_subtabs', JSON.stringify(extra));
+  } catch(e){}
+}
+
+// 페이지 로드 시 추가 탭 복원
+function restoreBrandSubtabs(){
+  try {
+    var raw = localStorage.getItem('bos_extra_brand_subtabs');
+    if(!raw) return;
+    var extra = JSON.parse(raw);
+    if(!Array.isArray(extra) || extra.length === 0) return;
+    var nav = document.getElementById('brand-subtab-nav');
+    if(!nav) return;
+    var addBtn = nav.querySelector('.stab[onclick*="addBrandSubTab"]');
+    if(!addBtn) return;
+    extra.forEach(function(t){
+      var btn = document.createElement('button');
+      btn.className = 'stab';
+      btn.setAttribute('onclick', 'showBrandTab(' + t.idx + ',this)');
+      btn.innerHTML = '<span class="stab-name-edit" contenteditable="true">' + escapeHtml(t.name) + '</span>' +
+                      '<span class="stab-del" onclick="event.stopPropagation();deleteBrandSubTab(' + t.idx + ',this)" title="탭 삭제">×</span>';
+      nav.insertBefore(btn, addBtn);
+    });
+    syncBrandSubtabOptions();
+  } catch(e){ console.error('탭 복원 실패', e); }
+}
+
+// 안전한 escapeHtml (없을 수도 있어서 폴리필)
+if(typeof escapeHtml !== 'function'){
+  function escapeHtml(s){
+    return String(s||'').replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+}
 
 // Brand Modal
 let brandLinkCount=0;
@@ -10166,6 +10329,163 @@ function forceIsolationReset(){
   </div>
 </div>
 
+<!-- 📦 정보저장소 탭 -->
+<div id="t21" class="tab-pane">
+  <div class="card" style="padding:20px">
+    
+    <!-- 헤더 + 추가 버튼 -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--bd)">
+      <div>
+        <h3 style="margin:0;font-size:16px;color:var(--tx);font-weight:700">📦 정보저장소</h3>
+        <div style="font-size:11px;color:var(--mu);margin-top:3px">급하게 알아본 정보를 빠르게 기록하는 공간 (링크·스크린샷·메모)</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn" onclick="exportInfoStorage()" title="CSV로 내보내기">💾 내보내기</button>
+        <button class="btn pri" onclick="addInfoStorageItem()">＋ 기록 추가</button>
+      </div>
+    </div>
+    
+    <!-- 통계 -->
+    <div style="display:flex;gap:14px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+      <div><span class="sn" id="info-total">0</span><span class="sl">총 기록</span></div>
+      <div class="sdiv"></div>
+      <div><span class="sn" id="info-today">0</span><span class="sl">오늘 추가</span></div>
+      <div class="sdiv"></div>
+      <div><span class="sn" id="info-thismonth">0</span><span class="sl">이번달</span></div>
+      <div class="sdiv"></div>
+      <div><span class="sn" id="info-filtered">0</span><span class="sl">필터결과</span></div>
+    </div>
+    
+    <!-- 분류 필터 칩 (가로 스크롤) -->
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid var(--bd)">
+      <span style="font-size:11px;color:var(--mu);margin-right:4px">📂 분류</span>
+      <button class="info-cat-chip active" data-cat="" onclick="filterInfoByCategory('')">전체</button>
+      <button class="info-cat-chip" data-cat="화장품" onclick="filterInfoByCategory('화장품')">🧴 화장품</button>
+      <button class="info-cat-chip" data-cat="건기식" onclick="filterInfoByCategory('건기식')">💊 건기식</button>
+      <button class="info-cat-chip" data-cat="생활용품" onclick="filterInfoByCategory('생활용품')">🏠 생활용품</button>
+      <button class="info-cat-chip" data-cat="단순정보" onclick="filterInfoByCategory('단순정보')">📋 단순정보</button>
+      <button class="info-cat-chip" data-cat="마케팅방법" onclick="filterInfoByCategory('마케팅방법')">📣 마케팅방법</button>
+      <button class="info-cat-chip" data-cat="기타" onclick="filterInfoByCategory('기타')">📌 기타</button>
+      <span id="info-custom-cats" style="display:inline-flex;gap:6px"></span>
+    </div>
+    
+    <!-- 검색 + 정렬 + 월 -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+      <div class="srch" style="margin:0;flex:1;min-width:180px"><span class="si">⌕</span><input id="info-search" placeholder="검색 (내용·이유·메모·분류)..." oninput="renderInfoStorage()" style="width:100%"></div>
+      <select class="sm" id="info-sort" onchange="renderInfoStorage()" title="정렬">
+        <option value="newest">📅 최신순</option>
+        <option value="oldest">📅 오래된순</option>
+        <option value="alpha">🔤 제목순</option>
+        <option value="cat">📂 분류순</option>
+      </select>
+      <select class="sm" id="info-month" onchange="renderInfoStorage()" title="월 필터">
+        <option value="">전체 기간</option>
+      </select>
+      <button class="btn" onclick="clearInfoFilters()" style="font-size:11px" title="필터 초기화">🔄 초기화</button>
+    </div>
+    
+    <!-- 테이블 -->
+    <div class="tc">
+      <table id="info-storage-table">
+        <thead><tr>
+          <th style="width:110px">📅 날짜</th>
+          <th style="width:90px">📂 분류</th>
+          <th style="width:16%">📝 기록한 내용</th>
+          <th style="width:20%">💡 기록 이유</th>
+          <th style="width:14%">🔗 링크</th>
+          <th style="width:12%">🖼 스크린샷</th>
+          <th>💬 간단메모</th>
+          <th style="width:50px">관리</th>
+        </tr></thead>
+        <tbody id="info-storage-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 정보저장소 추가/편집 모달 -->
+<div id="info-storage-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;align-items:center;justify-content:center" onclick="if(event.target===this)closeInfoStorageModal()">
+  <div style="background:#fff;border-radius:12px;padding:24px;max-width:680px;width:92%;max-height:92vh;overflow-y:auto" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <div id="info-modal-title" style="font-size:16px;font-weight:700;color:var(--tx)">📦 정보 기록 추가</div>
+      <button onclick="closeInfoStorageModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--mu)">×</button>
+    </div>
+    
+    <input type="hidden" id="info-item-id">
+    
+    <!-- 분류 (필수) -->
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-size:11px;font-weight:600;color:var(--mu);margin-bottom:4px">📂 분류 <span style="color:#C0392B">*</span></label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="info-item-category" style="flex:1;padding:8px 10px;border:1px solid var(--bd);border-radius:6px;font-size:13px;font-family:inherit;background:#fff" onchange="handleCategoryChange()">
+          <option value="화장품">🧴 화장품</option>
+          <option value="건기식">💊 건기식</option>
+          <option value="생활용품">🏠 생활용품</option>
+          <option value="단순정보">📋 단순정보</option>
+          <option value="마케팅방법">📣 마케팅방법</option>
+          <option value="기타">📌 기타 (직접입력)</option>
+        </select>
+        <input type="text" id="info-item-category-custom" placeholder="직접 입력..." style="display:none;flex:1;padding:8px 10px;border:1px solid #e8d4a8;border-radius:6px;font-size:13px;font-family:inherit;background:#fff8ec">
+      </div>
+    </div>
+    
+    <!-- 기록한 내용 (필수) -->
+    <div style="margin-bottom:14px;background:#fff8ec;border:1px solid #e8d4a8;border-radius:8px;padding:12px 14px">
+      <label style="display:block;font-size:11px;font-weight:700;color:#8B5E00;margin-bottom:4px">📝 기록한 내용 <span style="color:#C0392B">*</span></label>
+      <input type="text" id="info-item-title" placeholder="예: 위자드조선 누룩밤 100ml 30만개 판매 정보" style="width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:6px;font-size:13px;font-family:inherit">
+    </div>
+    
+    <!-- 기록 이유 (강조) -->
+    <div style="margin-bottom:14px;background:linear-gradient(135deg,#fffaf0,#fff5e0);border:1px solid #e8d4a8;border-radius:8px;padding:12px 14px">
+      <label style="display:block;font-size:11px;font-weight:700;color:#8B5E00;margin-bottom:4px">💡 기록 이유 <span style="font-size:9px;color:var(--mu);font-weight:400">(왜 기록했나)</span></label>
+      <textarea id="info-item-reason" placeholder="예: 우리 브랜드 50g 가격 책정 시 비교용 / 광고 카피 차별화 분석용" style="width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:6px;font-size:13px;font-family:inherit;min-height:50px;resize:vertical"></textarea>
+    </div>
+    
+    <!-- 링크 -->
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-size:11px;font-weight:600;color:var(--mu);margin-bottom:4px">🔗 링크 (선택)</label>
+      <input type="url" id="info-item-link" placeholder="https://..." style="width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:6px;font-size:13px;font-family:inherit">
+      <div style="font-size:10px;color:var(--mu);margin-top:3px">기사 URL, 인스타 게시물, 광고 라이브러리 등</div>
+    </div>
+    
+    <!-- 스크린샷 (Base64) -->
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-size:11px;font-weight:600;color:var(--mu);margin-bottom:4px">🖼 스크린샷 (선택, 클립보드 붙여넣기 또는 파일 선택)</label>
+      <div id="info-paste-area" tabindex="0" style="border:2px dashed var(--bd);border-radius:8px;padding:14px;text-align:center;background:#fafaf8;cursor:pointer;transition:.15s;outline:none" 
+           onclick="document.getElementById('info-file-input').click()">
+        <div id="info-paste-hint" style="font-size:11px;color:var(--mu)">📋 여기 클릭 후 Ctrl+V 또는 파일 선택<br>이미지 파일 (PNG, JPG)</div>
+        <input type="file" id="info-file-input" accept="image/*" style="display:none" onchange="handleInfoFileSelect(event)">
+      </div>
+      <div id="info-image-preview" style="margin-top:8px;display:none">
+        <img id="info-image-thumb" style="max-width:100%;max-height:200px;border-radius:6px;border:1px solid var(--bd)">
+        <button onclick="removeInfoImage()" style="margin-top:6px;padding:4px 10px;background:#C0392B;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer">🗑 이미지 제거</button>
+      </div>
+      <input type="hidden" id="info-item-image">
+    </div>
+    
+    <!-- 간단메모 -->
+    <div style="margin-bottom:18px">
+      <label style="display:block;font-size:11px;font-weight:600;color:var(--mu);margin-bottom:4px">💬 간단메모 (선택)</label>
+      <textarea id="info-item-memo" placeholder="추가 메모, 컨텍스트, 후속 액션 등..." style="width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:6px;font-size:13px;font-family:inherit;min-height:60px;resize:vertical"></textarea>
+    </div>
+    
+    <!-- 액션 버튼 -->
+    <div style="display:flex;justify-content:space-between;gap:8px;border-top:1px solid var(--bd);padding-top:14px">
+      <button id="info-delete-btn" onclick="deleteInfoStorageItem()" style="display:none;padding:8px 14px;border:none;border-radius:6px;background:#C0392B;color:#fff;font-size:12px;font-weight:600;cursor:pointer">🗑 삭제</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button onclick="closeInfoStorageModal()" style="padding:8px 14px;border:1px solid var(--bd);border-radius:6px;background:#fff;color:var(--tx);font-size:12px;font-weight:600;cursor:pointer">취소</button>
+        <button onclick="saveInfoStorageItem()" style="padding:8px 14px;border:none;border-radius:6px;background:#1A1916;color:#fff;font-size:12px;font-weight:600;cursor:pointer">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 이미지 크게 보기 모달 -->
+<div id="info-image-zoom" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9100;align-items:center;justify-content:center;cursor:zoom-out" onclick="this.style.display='none'">
+  <img id="info-image-zoom-img" style="max-width:92%;max-height:92%;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.5)">
+</div>
+
+
 <!-- 📅 캘린더 항목 편집 모달 -->
 <div id="bos-cal-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;align-items:center;justify-content:center" onclick="if(event.target===this)closeCalModal_BOS()">
   <div style="background:#fff;border-radius:12px;padding:24px;max-width:480px;width:90%;max-height:90vh;overflow-y:auto" onclick="event.stopPropagation()">
@@ -10551,5 +10871,539 @@ function forceIsolationReset(){
 })();
 </script>
 
+
+<script id="bos-info-storage-script">
+// ============================================================
+// 📦 정보저장소 - 빠른 기록 행 시스템 (분류·필터 강화)
+// ============================================================
+(function(){
+  var INFO_STORAGE_KEY = 'bos_info_storage_v1';
+  var INFO_CUSTOM_CATS_KEY = 'bos_info_custom_categories_v1';
+  var infoData = [];
+  var infoCustomCategories = [];
+  var infoEditingId = null;
+  var infoSelectedCategory = '';
+  
+  var BASE_CATEGORIES = ['화장품','건기식','생활용품','단순정보','마케팅방법','기타'];
+  var CATEGORY_ICONS = {
+    '화장품':'🧴','건기식':'💊','생활용품':'🏠',
+    '단순정보':'📋','마케팅방법':'📣','기타':'📌'
+  };
+  var CATEGORY_COLORS = {
+    '화장품':'#E8B4D8','건기식':'#A8D5BA','생활용품':'#B5C9E8',
+    '단순정보':'#D4D4D0','마케팅방법':'#F4C28F','기타':'#D8C8E8'
+  };
+  
+  function loadInfoData(){
+    try {
+      var raw = localStorage.getItem(INFO_STORAGE_KEY);
+      if(raw) infoData = JSON.parse(raw);
+    } catch(e){ infoData = []; }
+    if(!Array.isArray(infoData)) infoData = [];
+    
+    try {
+      var rawCats = localStorage.getItem(INFO_CUSTOM_CATS_KEY);
+      if(rawCats) infoCustomCategories = JSON.parse(rawCats);
+    } catch(e){ infoCustomCategories = []; }
+    if(!Array.isArray(infoCustomCategories)) infoCustomCategories = [];
+  }
+  
+  function saveInfoData(){
+    try {
+      localStorage.setItem(INFO_STORAGE_KEY, JSON.stringify(infoData));
+    } catch(e){
+      console.error('저장 실패 (용량 초과 가능성)', e);
+      alert('저장 실패: 스크린샷 용량이 너무 크거나 저장공간이 부족합니다.');
+    }
+  }
+  
+  function saveCustomCategories(){
+    try { localStorage.setItem(INFO_CUSTOM_CATS_KEY, JSON.stringify(infoCustomCategories)); }
+    catch(e){}
+  }
+  
+  function escapeHtmlInfo(s){
+    return String(s||'').replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function escapeAttrInfo(s){ return escapeHtmlInfo(s); }
+  
+  function getCategoryIcon(cat){
+    return CATEGORY_ICONS[cat] || '📌';
+  }
+  function getCategoryColor(cat){
+    return CATEGORY_COLORS[cat] || '#E0DBC8';
+  }
+  
+  window.initInfoStorage = function(){
+    loadInfoData();
+    renderCustomCategoryChips();
+    rebuildMonthOptions();
+    renderInfoStorage();
+    setupPasteHandler();
+  };
+  
+  // 분류 선택 시 "기타" 면 직접입력 input 표시
+  window.handleCategoryChange = function(){
+    var sel = document.getElementById('info-item-category');
+    var custom = document.getElementById('info-item-category-custom');
+    if(!sel || !custom) return;
+    if(sel.value === '기타'){
+      custom.style.display = '';
+      setTimeout(function(){ custom.focus(); }, 50);
+    } else {
+      custom.style.display = 'none';
+      custom.value = '';
+    }
+  };
+  
+  // 칩 필터 클릭
+  window.filterInfoByCategory = function(cat){
+    infoSelectedCategory = cat;
+    document.querySelectorAll('.info-cat-chip').forEach(function(c){
+      c.classList.toggle('active', c.getAttribute('data-cat') === cat);
+    });
+    renderInfoStorage();
+  };
+  
+  // 필터 초기화
+  window.clearInfoFilters = function(){
+    infoSelectedCategory = '';
+    var searchEl = document.getElementById('info-search');
+    var sortEl = document.getElementById('info-sort');
+    var monthEl = document.getElementById('info-month');
+    if(searchEl) searchEl.value = '';
+    if(sortEl) sortEl.value = 'newest';
+    if(monthEl) monthEl.value = '';
+    document.querySelectorAll('.info-cat-chip').forEach(function(c){
+      c.classList.toggle('active', c.getAttribute('data-cat') === '');
+    });
+    renderInfoStorage();
+  };
+  
+  // 사용자 추가 분류 칩 렌더
+  function renderCustomCategoryChips(){
+    var container = document.getElementById('info-custom-cats');
+    if(!container) return;
+    container.innerHTML = infoCustomCategories.map(function(c){
+      return '<button class="info-cat-chip" data-cat="' + escapeAttrInfo(c) + '" onclick="filterInfoByCategory(\'' + escapeAttrInfo(c).replace(/'/g,"\\'") + '\')">📌 ' + escapeHtmlInfo(c) + '</button>';
+    }).join('');
+  }
+  
+  // 월 옵션 동적 생성 (등록된 데이터의 월들)
+  function rebuildMonthOptions(){
+    var sel = document.getElementById('info-month');
+    if(!sel) return;
+    var months = {};
+    infoData.forEach(function(it){
+      var dt = new Date(it.createdAt||Date.now());
+      var key = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0');
+      months[key] = (months[key]||0) + 1;
+    });
+    var keys = Object.keys(months).sort().reverse();
+    var current = sel.value;
+    sel.innerHTML = '<option value="">전체 기간</option>' + 
+      keys.map(function(k){
+        var parts = k.split('-');
+        return '<option value="' + k + '">' + parts[0] + '년 ' + parseInt(parts[1]) + '월 (' + months[k] + ')</option>';
+      }).join('');
+    if(current && months[current]) sel.value = current;
+  }
+  
+  window.renderInfoStorage = function(){
+    var tbody = document.getElementById('info-storage-tbody');
+    if(!tbody) return;
+    
+    var searchEl = document.getElementById('info-search');
+    var sortEl = document.getElementById('info-sort');
+    var monthEl = document.getElementById('info-month');
+    var query = (searchEl?.value || '').toLowerCase().trim();
+    var sort = sortEl?.value || 'newest';
+    var monthFilter = monthEl?.value || '';
+    
+    // 필터링
+    var items = infoData.slice();
+    
+    // 분류 필터
+    if(infoSelectedCategory){
+      items = items.filter(function(it){
+        return (it.category || '기타') === infoSelectedCategory;
+      });
+    }
+    
+    // 월 필터
+    if(monthFilter){
+      items = items.filter(function(it){
+        var dt = new Date(it.createdAt||Date.now());
+        var key = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0');
+        return key === monthFilter;
+      });
+    }
+    
+    // 검색 필터
+    if(query){
+      items = items.filter(function(it){
+        return (it.title||'').toLowerCase().includes(query) ||
+               (it.reason||'').toLowerCase().includes(query) ||
+               (it.memo||'').toLowerCase().includes(query) ||
+               (it.category||'').toLowerCase().includes(query);
+      });
+    }
+    
+    // 정렬
+    if(sort === 'newest') items.sort(function(a,b){ return (b.createdAt||0) - (a.createdAt||0); });
+    else if(sort === 'oldest') items.sort(function(a,b){ return (a.createdAt||0) - (b.createdAt||0); });
+    else if(sort === 'alpha') items.sort(function(a,b){ return (a.title||'').localeCompare(b.title||''); });
+    else if(sort === 'cat') items.sort(function(a,b){ 
+      var ca = a.category||'기타';
+      var cb = b.category||'기타';
+      if(ca !== cb) return ca.localeCompare(cb);
+      return (b.createdAt||0) - (a.createdAt||0);
+    });
+    
+    // 통계
+    var today = new Date(); today.setHours(0,0,0,0);
+    var todayTs = today.getTime();
+    var monthStart = new Date(today.getFullYear(), today.getMonth(), 1).getTime();
+    var todayCnt = 0, monthCnt = 0;
+    infoData.forEach(function(it){
+      if((it.createdAt||0) >= todayTs) todayCnt++;
+      if((it.createdAt||0) >= monthStart) monthCnt++;
+    });
+    document.getElementById('info-total').textContent = infoData.length;
+    document.getElementById('info-today').textContent = todayCnt;
+    document.getElementById('info-thismonth').textContent = monthCnt;
+    var filteredEl = document.getElementById('info-filtered');
+    if(filteredEl) filteredEl.textContent = items.length;
+    
+    if(items.length === 0){
+      var msg = '＋ 기록 추가 버튼을 눌러서 정보를 저장하세요';
+      if(query || infoSelectedCategory || monthFilter) msg = '필터 조건에 맞는 기록이 없습니다';
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px 20px;color:var(--mu);font-style:italic">' + msg + '</td></tr>';
+      return;
+    }
+    
+    tbody.innerHTML = items.map(function(it){
+      var dt = new Date(it.createdAt||Date.now());
+      var dateStr = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
+      var timeStr = String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
+      
+      var cat = it.category || '기타';
+      var catIcon = getCategoryIcon(cat);
+      var catColor = getCategoryColor(cat);
+      
+      // 분류 배지
+      var catBadge = '<span class="info-cat-badge" style="background:' + catColor + '40;border:1px solid ' + catColor + '" title="' + escapeAttrInfo(cat) + '">' +
+                     catIcon + ' <span style="font-size:10px">' + escapeHtmlInfo(cat) + '</span></span>';
+      
+      // 링크
+      var linkHtml = '';
+      if(it.link){
+        var shortLink = it.link.replace(/^https?:\/\//,'').slice(0,28);
+        if(it.link.length > 33) shortLink += '...';
+        linkHtml = '<a href="' + escapeAttrInfo(it.link) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:11px;color:#2563EB;text-decoration:none;word-break:break-all" title="' + escapeAttrInfo(it.link) + '">🔗 ' + escapeHtmlInfo(shortLink) + '</a>';
+      } else {
+        linkHtml = '<span style="font-size:10px;color:var(--mu);font-style:italic">-</span>';
+      }
+      
+      // 스크린샷
+      var imgHtml = '';
+      if(it.image){
+        imgHtml = '<img src="' + escapeAttrInfo(it.image) + '" style="max-width:90px;max-height:60px;border-radius:4px;border:1px solid var(--bd);cursor:zoom-in" onclick="event.stopPropagation();zoomInfoImage(\'' + it.id + '\')">';
+      } else {
+        imgHtml = '<span style="font-size:10px;color:var(--mu);font-style:italic">-</span>';
+      }
+      
+      // 메모
+      var memoHtml = it.memo ? escapeHtmlInfo(it.memo).replace(/\n/g,'<br>') : '<span style="font-size:10px;color:var(--mu);font-style:italic">-</span>';
+      
+      return '<tr onclick="editInfoStorageItem(\'' + it.id + '\')" style="cursor:pointer">' +
+        '<td style="font-size:11px;color:var(--mu);white-space:nowrap"><div>' + dateStr + '</div><div style="font-size:10px">' + timeStr + '</div></td>' +
+        '<td>' + catBadge + '</td>' +
+        '<td style="font-weight:600;color:var(--tx)">' + escapeHtmlInfo(it.title||'(제목없음)') + '</td>' +
+        '<td style="background:rgba(232,212,168,.15);border-left:3px solid #e8d4a8;font-style:italic;font-size:12px;color:#8B5E00">' + escapeHtmlInfo(it.reason||'').replace(/\n/g,'<br>') + '</td>' +
+        '<td>' + linkHtml + '</td>' +
+        '<td>' + imgHtml + '</td>' +
+        '<td style="font-size:12px;color:var(--tx);line-height:1.5">' + memoHtml + '</td>' +
+        '<td style="text-align:center">' +
+          '<button onclick="event.stopPropagation();deleteInfoStorageItemById(\'' + it.id + '\')" style="padding:3px 7px;background:none;border:1px solid var(--bd);border-radius:4px;color:var(--mu);font-size:11px;cursor:pointer" title="삭제">×</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+  };
+  
+  window.addInfoStorageItem = function(){
+    infoEditingId = null;
+    document.getElementById('info-modal-title').textContent = '📦 정보 기록 추가';
+    document.getElementById('info-item-id').value = '';
+    document.getElementById('info-item-title').value = '';
+    document.getElementById('info-item-reason').value = '';
+    document.getElementById('info-item-link').value = '';
+    document.getElementById('info-item-memo').value = '';
+    document.getElementById('info-item-image').value = '';
+    document.getElementById('info-image-preview').style.display = 'none';
+    document.getElementById('info-delete-btn').style.display = 'none';
+    // 분류: 현재 필터 선택값으로 기본 세팅 (있으면)
+    var catSel = document.getElementById('info-item-category');
+    var catCustom = document.getElementById('info-item-category-custom');
+    if(catSel){
+      if(infoSelectedCategory && BASE_CATEGORIES.includes(infoSelectedCategory)){
+        catSel.value = infoSelectedCategory;
+      } else if(infoSelectedCategory){
+        catSel.value = '기타';
+        if(catCustom){ catCustom.style.display = ''; catCustom.value = infoSelectedCategory; }
+      } else {
+        catSel.value = '화장품';
+      }
+      if(catSel.value !== '기타' && catCustom){ catCustom.style.display = 'none'; catCustom.value = ''; }
+    }
+    document.getElementById('info-storage-modal').style.display = 'flex';
+    setTimeout(function(){ document.getElementById('info-item-title').focus(); }, 100);
+  };
+  
+  window.editInfoStorageItem = function(id){
+    var item = infoData.find(function(it){ return it.id === id; });
+    if(!item) return;
+    infoEditingId = id;
+    document.getElementById('info-modal-title').textContent = '📦 정보 기록 편집';
+    document.getElementById('info-item-id').value = id;
+    document.getElementById('info-item-title').value = item.title || '';
+    document.getElementById('info-item-reason').value = item.reason || '';
+    document.getElementById('info-item-link').value = item.link || '';
+    document.getElementById('info-item-memo').value = item.memo || '';
+    document.getElementById('info-item-image').value = item.image || '';
+    
+    // 분류 채우기
+    var catSel = document.getElementById('info-item-category');
+    var catCustom = document.getElementById('info-item-category-custom');
+    var savedCat = item.category || '화장품';
+    if(catSel){
+      if(BASE_CATEGORIES.includes(savedCat)){
+        catSel.value = savedCat;
+        if(catCustom){ catCustom.style.display = 'none'; catCustom.value = ''; }
+      } else {
+        // 사용자 정의 분류
+        catSel.value = '기타';
+        if(catCustom){ catCustom.style.display = ''; catCustom.value = savedCat; }
+      }
+    }
+    
+    if(item.image){
+      document.getElementById('info-image-thumb').src = item.image;
+      document.getElementById('info-image-preview').style.display = '';
+    } else {
+      document.getElementById('info-image-preview').style.display = 'none';
+    }
+    
+    document.getElementById('info-delete-btn').style.display = '';
+    document.getElementById('info-storage-modal').style.display = 'flex';
+  };
+  
+  window.closeInfoStorageModal = function(){
+    document.getElementById('info-storage-modal').style.display = 'none';
+  };
+  
+  window.saveInfoStorageItem = function(){
+    var title = document.getElementById('info-item-title').value.trim();
+    if(!title){ alert('기록한 내용(제목)을 입력하세요'); return; }
+    
+    // 분류 결정
+    var catSel = document.getElementById('info-item-category');
+    var catCustom = document.getElementById('info-item-category-custom');
+    var category = catSel?.value || '화장품';
+    if(category === '기타'){
+      var custom = (catCustom?.value || '').trim();
+      if(custom){
+        category = custom;
+        // 사용자 정의 분류 자동 등록 (중복 방지)
+        if(!BASE_CATEGORIES.includes(custom) && !infoCustomCategories.includes(custom)){
+          infoCustomCategories.push(custom);
+          saveCustomCategories();
+          renderCustomCategoryChips();
+        }
+      }
+    }
+    
+    var item = {
+      category: category,
+      title: title,
+      reason: document.getElementById('info-item-reason').value.trim(),
+      link: document.getElementById('info-item-link').value.trim(),
+      image: document.getElementById('info-item-image').value || '',
+      memo: document.getElementById('info-item-memo').value.trim()
+    };
+    
+    if(infoEditingId){
+      var exist = infoData.find(function(it){ return it.id === infoEditingId; });
+      if(exist){
+        Object.assign(exist, item, {updatedAt: Date.now()});
+      }
+    } else {
+      infoData.push(Object.assign({id:'info_'+Date.now()+'_'+Math.floor(Math.random()*9999), createdAt:Date.now()}, item));
+    }
+    saveInfoData();
+    rebuildMonthOptions();
+    closeInfoStorageModal();
+    renderInfoStorage();
+  };
+  
+  window.deleteInfoStorageItem = function(){
+    var id = document.getElementById('info-item-id').value;
+    if(!id) return;
+    deleteInfoStorageItemById(id);
+    closeInfoStorageModal();
+  };
+  
+  window.deleteInfoStorageItemById = function(id){
+    var item = infoData.find(function(it){ return it.id === id; });
+    if(!confirm('"' + (item?item.title:'이 기록') + '" 을 삭제하시겠습니까?')) return;
+    infoData = infoData.filter(function(it){ return it.id !== id; });
+    saveInfoData();
+    rebuildMonthOptions();
+    renderInfoStorage();
+  };
+  
+  window.zoomInfoImage = function(id){
+    var item = infoData.find(function(it){ return it.id === id; });
+    if(!item || !item.image) return;
+    document.getElementById('info-image-zoom-img').src = item.image;
+    document.getElementById('info-image-zoom').style.display = 'flex';
+  };
+  
+  window.removeInfoImage = function(){
+    document.getElementById('info-item-image').value = '';
+    document.getElementById('info-image-preview').style.display = 'none';
+  };
+  
+  window.handleInfoFileSelect = function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    processInfoImage(file);
+  };
+  
+  function processInfoImage(file){
+    if(!file.type.startsWith('image/')){
+      alert('이미지 파일만 지원합니다');
+      return;
+    }
+    if(file.size > 3 * 1024 * 1024){
+      if(!confirm('이미지가 3MB를 초과합니다 (' + (file.size/1024/1024).toFixed(1) + 'MB). 계속하시겠습니까?\n\n* localStorage 용량 초과 가능성 있음.')) return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      var dataUrl = ev.target.result;
+      document.getElementById('info-item-image').value = dataUrl;
+      document.getElementById('info-image-thumb').src = dataUrl;
+      document.getElementById('info-image-preview').style.display = '';
+    };
+    reader.readAsDataURL(file);
+  }
+  
+  function setupPasteHandler(){
+    var modal = document.getElementById('info-storage-modal');
+    if(!modal || modal.dataset.pasteSetup === '1') return;
+    modal.dataset.pasteSetup = '1';
+    
+    modal.addEventListener('paste', function(e){
+      var items = (e.clipboardData||{}).items;
+      if(!items) return;
+      for(var i=0; i<items.length; i++){
+        if(items[i].type && items[i].type.startsWith('image/')){
+          e.preventDefault();
+          var file = items[i].getAsFile();
+          if(file) processInfoImage(file);
+          return;
+        }
+      }
+    });
+    
+    var pasteArea = document.getElementById('info-paste-area');
+    if(pasteArea){
+      pasteArea.addEventListener('focus', function(){
+        pasteArea.style.borderColor = '#1A1916';
+        pasteArea.style.background = '#fff8ec';
+      });
+      pasteArea.addEventListener('blur', function(){
+        pasteArea.style.borderColor = '';
+        pasteArea.style.background = '';
+      });
+    }
+  }
+  
+  window.exportInfoStorage = function(){
+    if(infoData.length === 0){ alert('내보낼 기록이 없습니다'); return; }
+    var rows = [['날짜','분류','기록한 내용','기록 이유','링크','간단메모']];
+    infoData.forEach(function(it){
+      var dt = new Date(it.createdAt||Date.now());
+      rows.push([
+        dt.toISOString().slice(0,16).replace('T',' '),
+        it.category||'기타',
+        it.title||'',
+        it.reason||'',
+        it.link||'',
+        it.memo||''
+      ]);
+    });
+    var csv = rows.map(function(r){
+      return r.map(function(c){
+        var s = String(c||'').replace(/"/g,'""');
+        return '"' + s + '"';
+      }).join(',');
+    }).join('\n');
+    
+    var blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'info-storage-' + new Date().toISOString().slice(0,10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  
+  // 사전 로드
+  loadInfoData();
+})();
+</script>
+
+<style id="info-storage-styles">
+/* 분류 칩 스타일 */
+.info-cat-chip{
+  padding:5px 11px;
+  background:#fff;
+  border:1px solid var(--bd);
+  border-radius:14px;
+  font-size:11px;
+  font-weight:600;
+  color:var(--mu);
+  cursor:pointer;
+  transition:.15s;
+  font-family:inherit;
+  white-space:nowrap;
+}
+.info-cat-chip:hover{
+  background:#fff8ec;
+  border-color:#e8d4a8;
+  color:#8B5E00;
+}
+.info-cat-chip.active{
+  background:#1A1916;
+  border-color:#1A1916;
+  color:#fff;
+}
+
+/* 분류 배지 (테이블 셀) */
+.info-cat-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:3px;
+  padding:3px 8px;
+  border-radius:5px;
+  font-size:11px;
+  font-weight:600;
+  color:var(--tx);
+  white-space:nowrap;
+}
+</style>
 </body>
 </html>
